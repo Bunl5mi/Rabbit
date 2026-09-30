@@ -1,0 +1,2272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+>
+
+<title>维基百科视觉实验页</title>
+
+<style>
+/* ==================== 基础重置 ==================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+}
+
+:root {
+  --wiki-width: 430px;
+  --wiki-bg: #ffffff;
+  --wiki-text: #202122;
+  --wiki-secondary: #54595d;
+  --wiki-border: #a2a9b1;
+  --wiki-light-border: #c8ccd1;
+  --wiki-link: #3366cc;
+  --wiki-link-visited: #795cb2;
+  --wiki-soft-bg: #f8f9fa;
+  --wiki-blue: #36c;
+}
+
+body {
+  background: #eaecf0;
+  color: var(--wiki-text);
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==================== 实验页控制栏 ==================== */
+
+.lab-controls {
+  position: fixed;
+  z-index: 9999;
+  right: 12px;
+  bottom: 14px;
+
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  padding: 7px;
+  border: 1px solid rgba(0, 0, 0, 0.13);
+  border-radius: 8px;
+
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 5px 22px rgba(0, 0, 0, 0.16);
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.lab-control-btn,
+.lab-cover-label {
+  min-height: 34px;
+  padding: 8px 10px;
+
+  border: 1px solid #a2a9b1;
+  border-radius: 3px;
+
+  background: #f8f9fa;
+  color: #202122;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.lab-control-btn:active,
+.lab-cover-label:active {
+  background: #eaecf0;
+  transform: scale(0.97);
+}
+
+.lab-control-btn.active {
+  border-color: #36c;
+  background: #36c;
+  color: #fff;
+}
+
+/* 隐藏控制栏后，在右下角保留一个小按钮 */
+.lab-controls.is-hidden {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.lab-controls.is-hidden > * {
+  display: none;
+}
+
+.lab-controls.is-hidden #btnToggleControls {
+  display: block;
+  width: 36px;
+  min-width: 36px;
+  padding: 8px 0;
+  border-radius: 50%;
+}
+
+/* ==================== 430px 视觉画布 ==================== */
+
+.wiki-stage {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#wikiPage {
+  width: var(--wiki-width);
+  min-height: 100vh;
+  margin: 0 auto;
+
+  overflow: hidden;
+  background: var(--wiki-bg);
+  color: var(--wiki-text);
+}
+
+/* ==================== 顶栏素材 ==================== */
+
+.wiki-topbar {
+  width: 100%;
+  overflow: hidden;
+  background: #fff;
+  line-height: 0;
+}
+
+.wiki-topbar img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+/* ==================== 头图 ==================== */
+
+.wiki-hero {
+  position: relative;
+  width: 100%;
+  height: 210px;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, #eef1f2, #d8dddf);
+}
+
+.wiki-hero img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wiki-hero-empty {
+  position: absolute;
+  inset: 0;
+
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 7px;
+
+  padding: 30px;
+  color: #72777d;
+  text-align: center;
+}
+
+.wiki-hero.is-empty .wiki-hero-empty {
+  display: flex;
+}
+
+.wiki-hero-empty-icon {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 38px;
+  line-height: 1;
+}
+
+.wiki-hero-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wiki-hero-empty-text {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ==================== 文章主体 ==================== */
+
+.wiki-article {
+  padding: 0 16px 46px;
+  background: #fff;
+}
+
+.wiki-article-header {
+  position: relative;
+  padding: 14px 0 0;
+}
+
+.wiki-title {
+  margin: 0;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    "Songti SC",
+    "SimSun",
+    serif;
+
+  color: #202122;
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.wiki-subtitle {
+  margin-top: 4px;
+  color: #54595d;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.wiki-subtitle::after {
+  content: "";
+  display: block;
+  width: 62px;
+  height: 1px;
+  margin-top: 11px;
+  background: #c8ccd1;
+}
+
+.wiki-lead::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
+.wiki-pencil {
+  float: right;
+  width: 36px;
+  height: 36px;
+  margin: 3px 0 5px 12px;
+  padding: 5px;
+  border: 0;
+  background: transparent;
+  color: #737373;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+}
+
+.wiki-pencil:active {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.wiki-pencil svg {
+  display: block;
+  width: 25px;
+  height: 25px;
+}
+
+/* ==================== 消歧义提示 ==================== */
+
+.wiki-disambiguation {
+  margin: 2px 0 13px;
+  color: #54595d;
+  font-size: 13.5px;
+  font-style: italic;
+  line-height: 1.65;
+}
+
+.wiki-disambiguation[hidden] {
+  display: none;
+}
+
+/* ==================== 正文通用排版 ==================== */
+
+.wiki-content {
+  color: #202122;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.72;
+  overflow-wrap: anywhere;
+}
+
+.wiki-content p {
+  margin: 0 0 13px;
+}
+
+.wiki-content b,
+.wiki-content strong {
+  font-weight: 700;
+}
+
+.wiki-content i,
+.wiki-content em {
+  font-style: italic;
+}
+
+.wiki-link {
+  color: var(--wiki-link);
+  text-decoration: none;
+}
+
+.wiki-link:active {
+  text-decoration: underline;
+}
+
+/* 引用小数字 */
+.wiki-reference {
+  position: relative;
+  top: -0.18em;
+  margin-left: 1px;
+  color: var(--wiki-link);
+  font-size: 0.72em;
+  font-weight: 500;
+  line-height: 0;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* ==================== 维护提示框 ==================== */
+
+.wiki-notice-stack {
+  margin: 13px 0 15px;
+  border: 1px solid #a2a9b1;
+  background: #f8f9fa;
+}
+
+.wiki-notice {
+  position: relative;
+  min-height: 56px;
+  padding: 10px 11px 10px 67px;
+  display: flex;
+  align-items: center;
+  color: #202122;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.wiki-notice + .wiki-notice {
+  border-top: 1px solid #a2a9b1;
+}
+
+.wiki-notice::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -1px;
+  width: 10px;
+}
+
+.wiki-notice-blue::before {
+  background: #36c;
+}
+
+.wiki-notice-orange::before {
+  background: #959392;
+}
+
+.wiki-notice-icon {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wiki-notice-icon-language {
+  color: #202122;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 23px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.wiki-notice-icon-language .arrow {
+  color: #d33;
+  font-size: 17px;
+}
+
+.wiki-notice-icon-book {
+  border-radius: 50%;
+  background: #f39800;
+  color: #fff;
+  font-size: 22px;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.85),
+    0 0 0 1px #d97800;
+}
+
+.wiki-notice-date {
+  margin-left: 5px;
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ==================== 事实速览折叠栏 ==================== */
+
+.wiki-facts {
+  margin: 14px 0 15px;
+  border: 1px solid #eaecf0;
+  background: #f8f9fa;
+}
+
+.wiki-facts-button {
+  width: 100%;
+  min-height: 55px;
+  padding: 12px 14px;
+  border: 0;
+  background: transparent;
+  color: #202122;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wiki-facts-label {
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wiki-facts-summary {
+  color: #72777d;
+  font-weight: 400;
+}
+
+.wiki-facts-arrow {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-right: 2px;
+
+  color: #202122;
+  transition: transform 0.2s ease;
+}
+
+/* 展开后，由向左变成向下 */
+.wiki-facts.open .wiki-facts-arrow {
+  transform: rotate(-90deg);
+}
+
+.wiki-facts-body {
+  display: none;
+  padding: 0 14px 14px;
+  border-top: 1px solid #eaecf0;
+}
+
+.wiki-facts.open .wiki-facts-body {
+  display: block;
+}
+
+.wiki-facts-figure {
+  margin: 14px 0 5px;
+  text-align: center;
+}
+
+
+.wiki-facts-figure figcaption {
+  padding: 8px 6px 11px;
+  color: #54595d;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.wiki-facts-row {
+  display: grid;
+  grid-template-columns: 98px 1fr;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #eaecf0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.wiki-facts-row:last-child {
+  border-bottom: 0;
+}
+
+.wiki-facts-key {
+  color: #1D2321;
+  font-weight: 600;
+}
+
+.wiki-facts-value {
+  color: #202122;
+}
+
+
+/* ==================== 信息框 ==================== */
+
+.wiki-infobox {
+  width: 100%;
+  margin: 15px 0;
+  border: 1px solid #a2a9b1;
+  border-spacing: 0;
+  border-collapse: collapse;
+  background: #f8f9fa;
+  color: #202122;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.wiki-infobox-title {
+  padding: 9px 10px;
+  background: #dfe8f7;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.wiki-infobox-image {
+  padding: 10px;
+  background: #fff;
+  text-align: center;
+}
+
+.wiki-infobox-image img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+.wiki-infobox-caption {
+  display: block;
+  margin-top: 7px;
+  color: #54595d;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.wiki-infobox th,
+.wiki-infobox td {
+  padding: 7px 9px;
+  border-top: 1px solid #c8ccd1;
+  vertical-align: top;
+  text-align: left;
+}
+
+.wiki-infobox th {
+  width: 35%;
+  background: #eaecf0;
+  font-weight: 600;
+}
+
+/* ==================== 普通文章图片 ==================== */
+
+.wiki-figure {
+  margin: 16px 0;
+  padding: 5px;
+  border: 1px solid #c8ccd1;
+  background: #f8f9fa;
+}
+
+.wiki-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.wiki-figure figcaption {
+  padding: 7px 4px 3px;
+  color: #54595d;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ==================== 参考文献 ==================== */
+
+.wiki-reference-group-title {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 17px 0 15px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.wiki-reference-group-arrow {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: #202122;
+}
+
+.wiki-references {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: #202122;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.wiki-references li {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
+.wiki-reference-number {
+  color: var(--wiki-link);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.wiki-reference-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.wiki-back-reference {
+  margin-left: 4px;
+  color: var(--wiki-link);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ==================== 页面底部 ==================== */
+
+.wiki-footer {
+  margin-top: 28px;
+  padding: 18px 16px 28px;
+  border-top: 1px solid #a2a9b1;
+  background: #f8f9fa;
+  color: #54595d;
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.wiki-footer a {
+  color: var(--wiki-link);
+  text-decoration: none;
+}
+
+/* ==================== 英文模式 ==================== */
+
+#wikiPage.lang-en {
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+#wikiPage.lang-en .wiki-title,
+#wikiPage.lang-en .wiki-section-title {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+/* ==================== 手机适配 ==================== */
+
+@media (max-width: 430px) {
+  #wikiPage {
+    width: 100%;
+    margin: 0;
+  }
+
+  .lab-controls {
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    max-width: calc(100vw - 16px);
+    overflow-x: auto;
+  }
+
+  .lab-control-btn,
+  .lab-cover-label {
+    flex-shrink: 0;
+  }
+}
+
+/* 截图或预览时可以隐藏实验控制栏 */
+body.clean-preview .lab-controls {
+  display: none;
+}
+
+/* ==================================================
+   兔兔专用：字体、距离、图片统一微调区
+   修改数字即可，其他代码不要动
+================================================== */
+
+/* ---------- 整个文章左右留白 ---------- */
+
+.wiki-article {
+  /* 第一个数字是上方，第二个是左右，第三个是下方 */
+  padding: 0 16px 46px;
+}
+
+
+/* ---------- 文章标题“兔” ---------- */
+
+.wiki-title {
+  font-size: 18px;       /* 标题字体大小 */
+  line-height: 1.25;     /* 标题行距 */
+  font-weight: 450;
+  margin-top: -3px;         /* 标题上方距离 */
+  margin-bottom: 0px;      /* 标题下方距离 */
+}
+
+
+/* ---------- 副标题“兔形目的一科哺乳动物” ---------- */
+
+.wiki-subtitle {
+  font-size: 10px;       /* 副标题字体大小 */
+  line-height: 1.45;     /* 副标题行距 */
+  margin-top: 4px;       /* 和大标题之间的距离 */
+  margin-bottom: 2px;      /* 和下方内容之间的距离 */
+}
+
+
+/* ---------- 副标题下面的短横线 ---------- */
+
+.wiki-subtitle::after {
+  width: 62px;           /* 横线长度 */
+  height: 1px;           /* 横线粗细 */
+  margin-top: 11px;      /* 横线和副标题之间的距离 */
+}
+
+
+/* ---------- 标题区域整体距离 ---------- */
+
+.wiki-article-header {
+  padding-top: 14px;     /* 标题距离上方头图的距离 */
+  margin-bottom: 28px;   /* 标题区域距离小注释的距离 */
+}
+
+
+/* ---------- 全部正文 ---------- */
+
+.wiki-content {
+  font-size: 12px;       /* 正文字体大小 */
+  line-height: 1.65;     /* 正文行距 */
+}
+
+
+/* ---------- 每一个正文段落 ---------- */
+
+.wiki-content p {
+  margin-top: 0;
+  margin-bottom: 13px;   /* 每段文字下面的距离 */
+}
+
+
+/* ---------- 小注释/消歧义文字 ---------- */
+
+.wiki-disambiguation {
+  margin-top: 2px;       /* 小注释上方距离 */
+  margin-bottom: 12px;   /* 小注释与正文之间的距离 */
+  font-size: 10px;     /* 小注释字体大小 */
+  line-height: 1.65;     /* 小注释行距 */
+  font-weight: 580;
+}
+
+
+/* ---------- 小铅笔 ---------- */
+
+.wiki-pencil {
+  width: 36px;           /* 按钮占用宽度 */
+  height: 36px;          /* 按钮占用高度 */
+
+  /* 上、右、下、左 */
+  margin: 3px 0 5px 12px;
+
+  padding: 5px;
+}
+
+.wiki-pencil svg {
+  width: 18px;           /* 铅笔图标大小 */
+  height: 18px;
+}
+
+
+/* ---------- 维护提示框整体 ---------- */
+
+.wiki-notice-stack {
+  margin-top: -5px;      /* 提示框上方距离 */
+  margin-bottom: 15px;   /* 提示框下方距离 */
+  background: #fafaf9;   /* 提示框整体底色 */
+}
+
+.wiki-notice {
+  background: #fafaf9;   /* 每条提示框底色 */
+}
+
+/* ---------- 每一条维护提示 ---------- */
+
+.wiki-notice {
+  min-height: 52px;
+  padding: 10px 11px 10px 67px;
+
+  background: #fafaf9;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* ---------- 事实速览整体 ---------- */
+
+.wiki-facts {
+  margin-top: 14px;       /* 上方距离 */
+  margin-bottom: 15px;    /* 下方距离 */
+  border: 0;              /* 删除外围描边 */
+  background: #f8f9f9;   /* 整体底色 */
+}
+
+
+/* ---------- 事实速览未展开时的标题栏 ---------- */
+
+.wiki-facts-button {
+  min-height: 42px;
+  padding: 12px 14px;
+  background: #f8f9f9;
+}
+
+.wiki-facts-label {
+  font-size: 12px;       /* “事实速览”字体大小 */
+}
+
+.wiki-facts-summary {
+  font-size: 12px;       /* “科学分类、分布……”大小 */
+}
+
+
+/* ---------- 事实速览展开后的内部留白 ---------- */
+
+.wiki-facts-body {
+  padding: 0 14px 14px;
+  border-top: 0;          /* 删除展开区域上方的框线 */
+  background: #f8f9f9;
+}
+
+/* ---------- 事实速览里面的图片 ---------- */
+
+.wiki-facts-figure {
+  /* 上、左右、下 */
+  margin: 14px 0 5px;
+}
+
+/* 图片外层：负责限制宽度和比例 */
+.wiki-facts-image-frame {
+  position: relative;
+  width: 100%;
+  max-width: 330px;
+  margin: 0 auto;
+  overflow: hidden;
+  background: #eaecf0;
+}
+
+/* 横版：宽 4，高 3 */
+.wiki-facts-figure.ratio-4-3 .wiki-facts-image-frame {
+  aspect-ratio: 4 / 3;
+}
+
+/* 竖版：宽 3，高 4 */
+.wiki-facts-figure.ratio-3-4 .wiki-facts-image-frame {
+  aspect-ratio: 3 / 4;
+}
+
+/* 图片自动填满所选择的比例 */
+.wiki-facts-image-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+
+/* ---------- 事实图片下面的说明 ---------- */
+
+.wiki-facts-figure figcaption {
+  padding-top: 8px;      /* 图片和说明文字的距离 */
+  padding-right: 6px;
+  padding-bottom: 11px;  /* 说明和事实列表的距离 */
+  padding-left: 6px;
+
+  font-size: 11px;       /* 图片说明字体大小 */
+  line-height: 1.5;
+}
+
+
+/* ---------- 事实速览每一行 ---------- */
+
+.wiki-facts-row {
+  grid-template-columns: 180px 1fr; /* 左侧栏目宽度 */
+  gap: 12px;                       /* 左右两栏距离 */
+  padding: 9px 0;                  /* 每行上下距离 */
+
+  font-size: 12px;                 /* 表格文字大小 */
+  line-height: 1.5;
+}
+
+/* ---------- 事实速览内部的小标题 ---------- */
+
+.wiki-facts-subtitle {
+  width: calc(100% + 28px);
+  margin: 0 -14px;
+  padding: 9px 6px;
+
+  border: 0;
+  background: #DFE0E4;
+  color: #202122;
+
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+
+
+/* ---------- 正文中的普通图片 ---------- */
+
+.wiki-figure {
+  margin-top: 16px;
+  margin-bottom: 16px;
+
+  padding: 0;               /* 删除图片周围留白 */
+  border: 0;                /* 删除边框 */
+  background: transparent;  /* 删除框框底色 */
+  text-align: center;
+}
+
+.wiki-figure img {
+  display: block;
+
+  width: auto;              /* 不强制拉伸图片 */
+  max-width: 100%;          /* 图片过大时自动缩小到文章宽度 */
+  height: auto;             /* 保留图片原始宽高比例 */
+
+  margin: 0 auto;           /* 图片水平居中 */
+}
+
+
+/* ---------- 普通图片说明文字 ---------- */
+
+.wiki-figure figcaption {
+  padding: 7px 4px 3px;
+
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+
+/* ---------- “参考文献”下面的“引用”标题 ---------- */
+
+.wiki-reference-group-title {
+  margin-top: 17px;
+  margin-bottom: 15px;
+
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+
+/* ---------- 每一条参考文献 ---------- */
+
+.wiki-references {
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.wiki-references li {
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 7px;
+  margin-bottom: 18px;    /* 文献之间的上下距离 */
+}
+
+
+/* ---------- 页面最上方大头图 ---------- */
+
+.wiki-hero {
+  height: 210px;
+  margin-top: 10px;
+}
+
+.wiki-hero img {
+  object-fit: cover;
+
+  /*
+    调整图片裁切位置：
+    center center = 正中间
+    center top    = 显示图片上部
+    center bottom = 显示图片下部
+  */
+  object-position: center center;
+}
+
+
+/* ---------- 页面底部 ---------- */
+
+.wiki-footer {
+  position: relative;
+
+  margin-top: 28px;
+  padding: 10px 16px 28px;
+
+  background: #fff;
+  border-top: 0; /* 删除原来横穿屏幕的线 */
+
+  font-size: 11px;
+  line-height: 1.65;
+
+}
+/* 底部说明与链接之间的距离 */
+#footerText {
+  margin-bottom: 15px;
+
+}
+
+/* 与底部文字左右对齐的横线 */
+.wiki-footer::before {
+  content: "";
+  position: absolute;
+
+  top: 0;
+  left: 16px;  /* 与文字左侧对齐 */
+  right: 16px; /* 与文字右侧对齐 */
+
+  height: 1px;
+  background: #eaecf0;
+}
+
+/* ---------- 维护提示框左侧图片图标 ---------- */
+
+.wiki-notice-icon-book {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.wiki-notice-icon-book img {
+  display: block;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+/* ==================== 两个折叠箭头 ==================== */
+
+/* 兔兔提供的 SVG 原本朝左，旋转 -90 度后朝下 */
+.wiki-facts-arrow,
+.wiki-reference-group-arrow {
+  display: block;
+  flex-shrink: 0;
+  color: #202122;
+  border: 0;
+  transform: rotate(-90deg);
+  transition: transform 0.2s ease;
+}
+
+/* 展开以后朝上 */
+.wiki-facts.open .wiki-facts-arrow,
+.wiki-reference-group-title.open .wiki-reference-group-arrow {
+  transform: rotate(90deg);
+}
+
+.wiki-facts-arrow {
+  width: 18px;
+  height: 18px;
+  margin-right: 2px;
+}
+
+.wiki-reference-group-arrow {
+  width: 20px;
+  height: 20px;
+}
+
+/* ---------- 引用折叠按钮 ---------- */
+
+button.wiki-reference-group-title {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #202122;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wiki-reference-group-title:active {
+  opacity: 0.65;
+}
+
+/* ==================== 无横线大章节标题 ==================== */
+
+.wiki-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+
+  /* 大章节标题与上下内容的距离 */
+  margin: 24px 0 28px;
+  padding: 0;
+
+  /* 不显示标题横线 */
+  border: 0;
+
+  color: #202122;
+  font-family:
+    Georgia,
+    "Times New Roman",
+    "Songti SC",
+    "SimSun",
+    serif;
+
+  font-size: 17px; /* “生物特征”等标题大小 */
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+/* 章节标题文字 */
+.wiki-section-title-text {
+  min-width: 0;
+  font: inherit;
+}
+
+/* 章节标题右侧的小铅笔 */
+.wiki-section-pencil {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 6px;
+  border: 0;
+  border-radius: 3px;
+
+  background: transparent;
+  color: #72777d;
+  cursor: pointer;
+}
+
+.wiki-section-pencil:active {
+  background: #f1f1f1;
+}
+
+.wiki-section-pencil svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+/* ==================== 章节里面的小标题 ==================== */
+
+.wiki-subsection-title {
+  margin: 0 0 14px;
+
+  color: #202122;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+/* 大章节标题后面紧接小章节标题 */
+.wiki-section-title + .wiki-subsection-title {
+  margin-top: 0;
+}
+
+/* 一个小章节结束后，下一个小章节的距离 */
+.wiki-content p + .wiki-subsection-title {
+  margin-top: 24px;
+}
+
+/* ==================== 注释与引用小章节 ==================== */
+
+/* “注释”和“引用”标题 */
+button.wiki-reference-group-title {
+  gap: 8px;
+  margin-top: 17px;
+  margin-bottom: 15px;
+
+  font-size: 14px;       /* 和“食性”等小章节一样大 */
+  font-weight: 700;      /* 和小章节一样粗 */
+  line-height: 1.45;
+}
+
+/* 标题前面的小箭头 */
+.wiki-reference-group-arrow {
+  width: 16px;           /* 随标题字体一起缩小 */
+  height: 16px;
+}
+
+/* 注释列表 */
+.wiki-notes {
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+
+  color: #202122;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+/* 每一条注释 */
+.wiki-notes li {
+  display: grid;
+  grid-template-columns: 45px minmax(0, 1fr);
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+/* 注释编号 */
+.wiki-note-number {
+  color: var(--wiki-link);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 注释正文 */
+.wiki-note-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* ==================== 注释与引用文字微调 ==================== */
+
+/* 注释板块的全部文字 */
+.wiki-notes,
+.wiki-references {
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+/* 左侧［注 1］和［1］的粗细 */
+.wiki-note-number,
+.wiki-reference-number {
+  font-weight: 450;
+}
+
+/* ==================== 顶栏搜索框文字 ==================== */
+
+/* 让文字可以覆盖在顶栏图片上 */
+.wiki-topbar {
+  position: relative;
+}
+
+/* 覆盖文字的透明区域 */
+.wiki-topbar-search-text {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  line-height: normal;
+}
+
+/* ---------- “搜索维基百科”文字 ---------- */
+
+.wiki-topbar-search-placeholder {
+  position: absolute;
+
+  /* 调整上下位置：数字越大越靠下 */
+  top: 52%;
+
+  /* 调整左右位置：数字越大越靠右 */
+  left: 58%;
+
+  /* 让文字按照自身高度垂直居中 */
+  transform: translateY(-50%);
+
+  /* 字体大小 */
+  font-size: 11px;
+
+  /* 字体颜色 */
+  color: #72777d;
+
+  /*
+    字体粗细：
+    400 = 正常
+    500 = 稍粗
+    600 = 较粗
+    700 = 粗体
+  */
+  font-weight: 400;
+
+  white-space: nowrap;
+}
+
+/* ---------- 右边“搜索”按钮文字 ---------- */
+
+.wiki-topbar-search-button {
+  position: absolute;
+
+  /* 调整上下位置：数字越大越靠下 */
+  top: 52%;
+
+  /* 调整左右位置：数字越大越靠左 */
+  right: 6%;
+
+  /* 让文字按照自身高度垂直居中 */
+  transform: translateY(-50%);
+
+  /* 字体大小 */
+  font-size: 11px;
+
+  /* 字体颜色 */
+  color: #404244;
+
+  /* 字体粗细 */
+  font-weight: 550;
+
+  white-space: nowrap;
+}
+
+/* ==================== 英文顶栏文字单独微调 ==================== */
+
+/* 英文版右侧“Search” */
+#wikiPage.lang-en .wiki-topbar-search-button {
+  right: 5.5%;
+  top: 52%;
+  font-size: 11px;
+  color: #404244;
+  font-weight: 550;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ==================== 实验控制栏 ==================== -->
+
+<div class="lab-controls" id="labControls">
+  <button
+    type="button"
+    class="lab-control-btn active"
+    id="btnChinese"
+  >
+    中文
+  </button>
+
+  <button
+    type="button"
+    class="lab-control-btn"
+    id="btnEnglish"
+  >
+    English
+  </button>
+
+  <label class="lab-cover-label">
+    更换头图
+    <input
+      type="file"
+      id="labCoverFile"
+      accept="image/*"
+      hidden
+    >
+  </label>
+
+  <button
+    type="button"
+    class="lab-control-btn"
+    id="btnToggleControls"
+    aria-label="隐藏实验按钮"
+  >
+    隐藏
+  </button>
+</div>
+
+<!-- ==================== 维基百科视觉页 ==================== -->
+
+<div class="wiki-stage">
+  <main id="wikiPage">
+
+    <!-- 中文与英文共用同一个图片位置 -->
+    <header class="wiki-topbar">
+  <img
+    id="wikiTopImage"
+    src="https://s3.bmp.ovh/2026/09/27/PSyAHdkk.jpg"
+    alt="Wikipedia"
+  >
+
+  <!-- 顶栏搜索框上的文字 -->
+  <div class="wiki-topbar-search-text">
+    <span
+      class="wiki-topbar-search-placeholder"
+      id="topbarSearchPlaceholder"
+    >
+      搜索维基百科
+    </span>
+
+    <span
+      class="wiki-topbar-search-button"
+      id="topbarSearchButton"
+    >
+      搜索
+    </span>
+  </div>
+</header>
+
+    <!-- 文章头图 -->
+    <section class="wiki-hero" id="wikiHero">
+      <img
+        id="wikiHeroImage"
+        src="https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?auto=format&fit=crop&w=1000&q=85"
+        alt="兔"
+      >
+
+      <div class="wiki-hero-empty">
+        <div class="wiki-hero-empty-icon">W</div>
+        <div class="wiki-hero-empty-title">尚未添加头图</div>
+        <div class="wiki-hero-empty-text">
+          使用右下角的“更换头图”选择手机中的图片
+        </div>
+      </div>
+    </section>
+
+    <!-- 文章区域 -->
+    <article class="wiki-article">
+
+      <header class="wiki-article-header">
+        <h1 class="wiki-title" id="wikiTitle">兔</h1>
+
+        <div class="wiki-subtitle" id="wikiSubtitle">
+          兔形目的一科哺乳动物
+        </div>
+
+        
+      </header>
+
+      <div class="wiki-content">
+
+  <div class="wiki-lead">
+
+    <button
+      type="button"
+      class="wiki-pencil"
+      id="wikiPencil"
+      aria-label="编辑"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 512 512"
+        aria-hidden="true"
+      >
+        <path
+          d="M0 0h512v512H0z"
+          fill="none"
+        />
+        <path
+          fill="currentColor"
+          d="m362.7 19.3l-48.4 48.4l130 130l48.4-48.4c25-25 25-65.5 0-90.5l-39.4-39.5c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18 23.3-22.2 37.4L1 481.2c-2.5 8.5-.2 17.6 6 23.8s15.3 8.5 23.7 6.1L151 475.7c14.1-4.2 27-11.8 37.4-22.2l233.3-233.2z"
+        />
+      </svg>
+    </button>
+
+    <!-- 消歧义 -->
+
+        <p
+          class="wiki-disambiguation"
+          id="wikiDisambiguation"
+        >
+          关于与「兔」标题相近或相同的条目，请见
+          <a href="#" class="wiki-link">「兔（消歧义）」</a>。
+        </p>
+
+        <!-- 第一段 -->
+        <p id="wikiIntroParagraph">
+          <b>兔</b>，又称<b>兔子</b>，为
+          <a href="#" class="wiki-link">哺乳类</a>
+          <a href="#" class="wiki-link">兔形目</a>
+          <b>兔科</b>（学名：Leporidae）物种的总称，包括
+          <a href="#" class="wiki-link">穴兔类</a>
+          （英语：rabbit）和
+          <a href="#" class="wiki-link">旷兔类</a>
+          （英语：hare），体型通常较小，各下级类群全球广布，
+          对多地的自然
+          <a href="#" class="wiki-link">生态系统</a>
+          及人类文化都有着一定影响。其中穴兔属的穴兔被人类
+          <a href="#" class="wiki-link">驯化</a>
+          成家兔，为人类提供肉、皮毛或作为
+          <a href="#" class="wiki-link">宠物</a>
+          饲养。
+        </p>
+
+  </div>
+
+        <!-- 维护提示框 -->
+        <div class="wiki-notice-stack">
+
+          <div class="wiki-notice wiki-notice-orange">
+<div class="wiki-notice-icon wiki-notice-icon-book">
+  <img
+    src="https://s3.bmp.ovh/2026/09/30/LgrlILsL.png"
+    alt="提示图标"
+  >
+</div>
+
+            <div>
+              此条目需要补充更多<a href="#" class="wiki-link">来源</a><span class="wiki-notice-date">（2026年9月27日）</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 事实速览 -->
+        <section class="wiki-facts" id="wikiFacts">
+          <button
+            type="button"
+            class="wiki-facts-button"
+            id="wikiFactsButton"
+            aria-expanded="false"
+          >
+            <span class="wiki-facts-label">
+              事实速览
+              <span class="wiki-facts-summary">
+                科学分类、分布……
+              </span>
+            </span>
+
+            <svg
+  class="wiki-facts-arrow"
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+>
+  <path d="m15 18-6-6 6-6"></path>
+</svg>
+          </button>
+
+          <div class="wiki-facts-body">
+
+  <!-- ratio-4-3 表示横版；需要竖版时改成 ratio-3-4 -->
+<figure class="wiki-facts-figure ratio-4-3">
+
+  <div class="wiki-facts-image-frame">
+    <img
+      id="infoboxImage"
+      src="https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?auto=format&fit=crop&w=900&q=85"
+      alt="兔"
+    >
+  </div>
+
+  <figcaption id="infoboxCaption">
+    一只野生穴兔
+  </figcaption>
+
+</figure>
+
+  <div class="wiki-facts-row">
+    <div class="wiki-facts-key" id="classificationLabel">
+      科学分类
+    </div>
+
+    <div class="wiki-facts-value" id="classificationValue">
+      动物界 Animalia
+    </div>
+  </div>
+
+  <div class="wiki-facts-row">
+    <div class="wiki-facts-key" id="orderLabel">
+      目
+    </div>
+
+    <div class="wiki-facts-value">
+      <a href="#" class="wiki-link" id="orderValue">
+        兔形目 Lagomorpha
+      </a>
+    </div>
+  </div>
+
+  <div class="wiki-facts-row">
+    <div class="wiki-facts-key" id="familyLabel">
+      科
+    </div>
+
+    <div class="wiki-facts-value" id="familyValue">
+      兔科 Leporidae
+    </div>
+  </div>
+<!-- 新的小标题 -->
+<div class="wiki-facts-subtitle">
+  基本资料
+</div>
+
+<!-- 新表格第一行 -->
+<div class="wiki-facts-row">
+  <div class="wiki-facts-key">
+    平均寿命
+  </div>
+
+  <div class="wiki-facts-value">
+    8—12年
+  </div>
+</div>
+
+<!-- 新表格第二行 -->
+<div class="wiki-facts-row">
+  <div class="wiki-facts-key">
+    食性
+  </div>
+
+  <div class="wiki-facts-value">
+    草食性
+  </div>
+</div>
+
+<!-- 新表格第三行 -->
+<div class="wiki-facts-row">
+  <div class="wiki-facts-key">
+    活动时间
+  </div>
+
+  <div class="wiki-facts-value">
+    晨昏及夜间
+  </div>
+</div>
+
+</div>
+        </section>
+
+        <!-- 第二段，展示引用数字 -->
+        <p id="wikiSecondParagraph">
+  野生的兔通常独居或群居于地下洞穴或地上巢穴中，大多情况下为<a href="#" class="wiki-link">草食性</a>，只有在极少数特殊状况或环境下才会通过肉食补充<a href="#" class="wiki-link">蛋白质</a>。<sup><a
+      href="#reference-1"
+      class="wiki-reference"
+      id="cite-1"
+    >[1]</a></sup>兔作为许多生态系统中<a href="#" class="wiki-link">顶级掠食者</a>的猎物，其<a href="#" class="wiki-link">生理</a>特性许多都是为规避其天敌而特化的，例如其视野较广，多为夜间活动。
+</p>
+
+        <p id="wikiThirdParagraph">
+          兔的后腿骨比前腿长，这样的结构使它们能够以高速跳跃逃离捕食者，
+          或是在被捕捉时踢蹬自卫。此外，兔出血症和兔传染性黏液瘤等传染病，
+          也是其一大威胁。
+          <sup>
+            <a
+              href="#reference-2"
+              class="wiki-reference"
+              id="cite-2"
+            >[2]</a>
+          </sup>
+        </p>
+
+        <!-- 章节 -->
+<!-- 大章节标题 -->
+<h2 class="wiki-section-title">
+  <span
+    class="wiki-section-title-text"
+    id="biologyTitle"
+  >
+    生物特征
+  </span>
+
+  <button
+    type="button"
+    class="wiki-section-pencil"
+    aria-label="编辑生物特征章节"
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 512 512"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="m362.7 19.3-48.4 48.4 130 130 48.4-48.4c25-25 25-65.5 0-90.5l-39.4-39.5c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18 23.3-22.2 37.4L1 481.2c-2.5 8.5-.2 17.6 6 23.8s15.3 8.5 23.7 6.1L151 475.7c14.1-4.2 27-11.8 37.4-22.2l233.3-233.2z"
+      />
+    </svg>
+  </button>
+</h2>
+
+<!-- 小章节标题 -->
+<h3 class="wiki-subsection-title" id="biologySubtitle">
+  食性
+</h3>
+
+<!-- 小章节正文 -->
+<p id="wikiBiologyParagraph">
+  兔科动物拥有发达的后肢、较长的耳朵和短尾。它们的门齿会持续生长，
+  因此需要通过啃食植物来磨损牙齿。不同种类的体型、毛色及生活环境
+  存在明显差异。
+</p>
+        <h2 class="wiki-section-title">
+  <span
+    class="wiki-section-title-text"
+    id="distributionTitle"
+  >
+    分布与栖息地
+  </span>
+
+  <button
+    type="button"
+    class="wiki-section-pencil"
+    aria-label="编辑分布与栖息地章节"
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 512 512"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="m362.7 19.3-48.4 48.4 130 130 48.4-48.4c25-25 25-65.5 0-90.5l-39.4-39.5c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18 23.3-22.2 37.4L1 481.2c-2.5 8.5-.2 17.6 6 23.8s15.3 8.5 23.7 6.1L151 475.7c14.1-4.2 27-11.8 37.4-22.2l233.3-233.2z"
+      />
+    </svg>
+  </button>
+</h2>
+
+        <p id="distributionParagraph">
+          兔科动物分布于世界大部分地区，栖息环境包括森林、草原、湿地、
+          荒漠和冻原。部分种类也能够适应城市及农业环境。
+          <sup>
+            <a
+              href="#reference-3"
+              class="wiki-reference"
+              id="cite-3"
+            >[3]</a>
+          </sup>
+        </p>
+
+        <figure class="wiki-figure">
+          <img
+            id="articleFigureImage"
+            src="https://images.unsplash.com/photo-1535241749838-299277b6305f?auto=format&fit=crop&w=1000&q=85"
+            alt="草地上的兔"
+          >
+
+          <figcaption id="articleFigureCaption">
+            草地环境中的兔科动物
+          </figcaption>
+        </figure>
+
+        <!-- 参考文献 -->
+<h2 class="wiki-section-title">
+  <span
+    class="wiki-section-title-text"
+    id="referencesTitle"
+  >
+    参考文献
+  </span>
+
+  <button
+    type="button"
+    class="wiki-section-pencil"
+    aria-label="编辑参考文献章节"
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 512 512"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="m362.7 19.3-48.4 48.4 130 130 48.4-48.4c25-25 25-65.5 0-90.5l-39.4-39.5c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18 23.3-22.2 37.4L1 481.2c-2.5 8.5-.2 17.6 6 23.8s15.3 8.5 23.7 6.1L151 475.7c14.1-4.2 27-11.8 37.4-22.2l233.3-233.2z"
+      />
+    </svg>
+  </button>
+</h2>
+
+<!-- 注释折叠区域 -->
+<button
+  type="button"
+  class="wiki-reference-group-title"
+  id="wikiNoteButton"
+  aria-expanded="false"
+>
+  <svg
+    class="wiki-reference-group-arrow"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="m15 18-6-6 6-6"></path>
+  </svg>
+
+  <span>注释</span>
+</button>
+
+<ol class="wiki-notes" id="wikiNoteList" hidden>
+  <li>
+    <span class="wiki-note-number">[注 1]</span>
+
+    <div class="wiki-note-content">
+      兔是兔科动物的统称，包括穴兔类和旷兔类。
+    </div>
+  </li>
+
+  <li>
+    <span class="wiki-note-number">[注 2]</span>
+
+    <div class="wiki-note-content">
+      不同兔科动物的生活习性和栖息环境存在差异。
+    </div>
+  </li>
+</ol>
+
+<button
+  type="button"
+  class="wiki-reference-group-title"
+  id="wikiReferenceButton"
+  aria-expanded="false"
+>
+  <svg
+    class="wiki-reference-group-arrow"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="m15 18-6-6 6-6"></path>
+  </svg>
+
+  <span>引用</span>
+</button>
+
+<ol class="wiki-references" id="wikiReferenceList" hidden>
+  <li id="reference-1">
+    <a href="#cite-1" class="wiki-reference-number">[1]</a>
+
+    <div class="wiki-reference-content">
+      <span id="referenceText1">
+        Smith, A. T.《兔形目动物的生态与行为》，2021年。
+      </span>
+
+       
+    </div>
+  </li>
+
+  <li id="reference-2">
+    <a href="#cite-2" class="wiki-reference-number">[2]</a>
+
+    <div class="wiki-reference-content">
+      <span id="referenceText2">
+        世界自然保护联盟：兔科动物资料库。
+      </span>
+
+       
+    </div>
+  </li>
+
+  <li id="reference-3">
+    <a href="#cite-3" class="wiki-reference-number">[3]</a>
+
+    <div class="wiki-reference-content">
+      <span id="referenceText3">
+        Chapman, J. A.《Rabbits, Hares and Pikas》，1990年。
+      </span>
+
+       
+    </div>
+  </li>
+</ol>
+
+      </div>
+    </article>
+
+    <footer class="wiki-footer">
+      <p id="footerText">
+        本页面仅用于维基百科风格视觉模板测试，不代表真实百科条目。
+      </p>
+
+<p>
+  <a href="#" id="privacyLink">隐私政策</a>&nbsp;
+  <a href="#" id="aboutLink">关于维基百科</a>&nbsp;
+  <a href="#" id="disclaimerLink">免责声明</a>
+</p>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+(function(){
+
+/* ==================== 元素 ==================== */
+
+var wikiPage=document.getElementById('wikiPage');
+var wikiTopImage=document.getElementById('wikiTopImage');
+
+var btnChinese=document.getElementById('btnChinese');
+var btnEnglish=document.getElementById('btnEnglish');
+var btnToggleControls=document.getElementById('btnToggleControls');
+var labControls=document.getElementById('labControls');
+
+var labCoverFile=document.getElementById('labCoverFile');
+var wikiHero=document.getElementById('wikiHero');
+var wikiHeroImage=document.getElementById('wikiHeroImage');
+
+var wikiFacts=document.getElementById('wikiFacts');
+var wikiFactsButton=document.getElementById('wikiFactsButton');
+
+/* ==================== 顶栏素材 ==================== */
+
+var TOP_IMAGES={
+  zh:'https://s3.bmp.ovh/2026/09/27/PSyAHdkk.jpg',
+  en:'https://s3.bmp.ovh/2026/09/28/ATrZbEMM.jpg'
+};
+
+/* ==================== 中英文示例文案 ==================== */
+
+var COPY={
+  zh:{
+    pageLanguage:'zh-CN',
+    searchPlaceholder:'搜索维基百科',
+    searchButton:'搜索',
+    title:'兔',
+    subtitle:'兔形目的一科哺乳动物',
+    disambiguation:
+      '关于与「兔」标题相近或相同的条目，请见 <a href="#" class="wiki-link">「兔（消歧义）」</a>。',
+
+    intro:
+  '<b>兔</b>，又称<b>兔子</b>，为'+
+  '<a href="#" class="wiki-link">哺乳类</a>'+
+  '<a href="#" class="wiki-link">兔形目</a>'+
+  '<b>兔科</b>（学名：Leporidae）物种的总称，包括'+
+  '<a href="#" class="wiki-link">穴兔类</a>（英语：rabbit）和'+
+  '<a href="#" class="wiki-link">旷兔类</a>（英语：hare），'+
+  '体型通常较小，各下级类群全球广布，对多地的自然'+
+  '<a href="#" class="wiki-link">生态系统</a>及人类文化都有着一定影响。',
+
+    biologyTitle:'生物特征',
+    biology:
+      '兔科动物拥有发达的后肢、较长的耳朵和短尾。它们的门齿会持续生长，'+
+      '因此需要通过啃食植物来磨损牙齿。不同种类的体型、毛色及生活环境存在明显差异。',
+
+    distributionTitle:'分布与栖息地',
+    distribution:
+      '兔科动物分布于世界大部分地区，栖息环境包括森林、草原、湿地、荒漠和冻原。'+
+      '部分种类也能够适应城市及农业环境。'+
+      '<sup><a href="#reference-3" class="wiki-reference" id="cite-3">[3]</a></sup>',
+
+    referencesTitle:'参考文献',
+    infoboxTitle:'兔科',
+    infoboxCaption:'一只野生穴兔',
+    classificationLabel:'科学分类',
+    classificationValue:'动物界 Animalia',
+    orderLabel:'目',
+    orderValue:'兔形目 Lagomorpha',
+    familyLabel:'科',
+    familyValue:'兔科 Leporidae',
+    figureCaption:'草地环境中的兔科动物',
+    footer:'本页面仅用于维基百科风格视觉模板测试，不代表真实百科条目。',
+privacyLink:'隐私政策',
+aboutLink:'关于维基百科',
+disclaimerLink:'免责声明'
+  },
+
+  en:{
+    pageLanguage:'en',
+    searchPlaceholder:'Search Wikipedia',
+    searchButton:'Search',
+    title:'Leporidae',
+    subtitle:'Family of mammals in the order Lagomorpha',
+    disambiguation:
+      'For other uses, see <a href="#" class="wiki-link">Rabbit (disambiguation)</a>.',
+
+    intro:
+      '<b>Leporidae</b> is the family of '+
+      '<a href="#" class="wiki-link">rabbits</a> and '+
+      '<a href="#" class="wiki-link">hares</a>, containing over 70 extant species. '+
+      'They are small to medium-sized mammals with strong hind legs, long ears, '+
+      'and short tails. Members of the family occur across much of the world.',
+
+    biologyTitle:'Biology',
+    biology:
+      'Leporids have elongated hind limbs, long ears and continuously growing incisors. '+
+      'Their anatomy is adapted for rapid movement and for feeding on plant material.',
+
+    distributionTitle:'Distribution and habitat',
+    distribution:
+      'Leporids inhabit forests, grasslands, wetlands, deserts and tundra throughout much of the world. '+
+      'Some species have also adapted to agricultural and urban environments.'+
+      '<sup><a href="#reference-3" class="wiki-reference" id="cite-3">[3]</a></sup>',
+
+    referencesTitle:'References',
+    infoboxTitle:'Leporidae',
+    infoboxCaption:'A European rabbit',
+    classificationLabel:'Scientific classification',
+    classificationValue:'Kingdom: Animalia',
+    orderLabel:'Order',
+    orderValue:'Lagomorpha',
+    familyLabel:'Family',
+    familyValue:'Leporidae',
+    figureCaption:'A leporid in grassland habitat',
+footer:
+  'This page is a visual experiment for a Wikipedia-style template and is not a real encyclopedia article.',
+privacyLink:'Privacy policy',
+aboutLink:'About Wikipedia',
+disclaimerLink:'Disclaimers'
+  }
+};
+
+/* ==================== 语言切换 ==================== */
+
+function setLanguage(language){
+  var isEnglish=language==='en';
+  var copy=isEnglish ? COPY.en : COPY.zh;
+
+  document.documentElement.lang=copy.pageLanguage;
+
+  wikiPage.classList.toggle('lang-en',isEnglish);
+  wikiTopImage.src=isEnglish ? TOP_IMAGES.en : TOP_IMAGES.zh;
+document.getElementById(
+  'topbarSearchPlaceholder'
+).textContent = copy.searchPlaceholder;
+
+document.getElementById(
+  'topbarSearchButton'
+).textContent = copy.searchButton;
+
+  btnChinese.classList.toggle('active',!isEnglish);
+  btnEnglish.classList.toggle('active',isEnglish);
+
+  document.getElementById('wikiTitle').textContent=copy.title;
+  document.getElementById('wikiSubtitle').textContent=copy.subtitle;
+  document.getElementById('wikiDisambiguation').innerHTML=
+    copy.disambiguation;
+
+  document.getElementById('wikiIntroParagraph').innerHTML=
+    copy.intro;
+
+  document.getElementById('biologyTitle').textContent=
+    copy.biologyTitle;
+
+  document.getElementById('wikiBiologyParagraph').textContent=
+    copy.biology;
+
+  document.getElementById('distributionTitle').textContent=
+    copy.distributionTitle;
+
+  document.getElementById('distributionParagraph').innerHTML=
+    copy.distribution;
+
+  document.getElementById('referencesTitle').textContent=
+    copy.referencesTitle;
+
+
+  document.getElementById('infoboxCaption').textContent=
+    copy.infoboxCaption;
+
+  document.getElementById('classificationLabel').textContent=
+    copy.classificationLabel;
+
+  document.getElementById('classificationValue').textContent=
+    copy.classificationValue;
+
+  document.getElementById('orderLabel').textContent=
+    copy.orderLabel;
+
+  document.getElementById('orderValue').textContent=
+    copy.orderValue;
+
+  document.getElementById('familyLabel').textContent=
+    copy.familyLabel;
+
+  document.getElementById('familyValue').textContent=
+    copy.familyValue;
+
+  document.getElementById('articleFigureCaption').textContent=
+    copy.figureCaption;
+
+  document.getElementById('footerText').textContent=
+    copy.footer;
+
+document.getElementById('privacyLink').textContent =
+  copy.privacyLink;
+
+document.getElementById('aboutLink').textContent =
+  copy.aboutLink;
+
+document.getElementById('disclaimerLink').textContent =
+  copy.disclaimerLink;
+}
+
+btnChinese.addEventListener('click',function(){
+  setLanguage('zh');
+});
+
+btnEnglish.addEventListener('click',function(){
+  setLanguage('en');
+});
+
+/* ==================== 本地更换头图 ==================== */
+
+labCoverFile.addEventListener('change',function(){
+  var file=this.files[0];
+
+  if(!file){
+    return;
+  }
+
+  if(!file.type.startsWith('image/')){
+    alert('请选择图片文件');
+    this.value='';
+    return;
+  }
+
+  var reader=new FileReader();
+
+  reader.onload=function(event){
+    wikiHeroImage.src=event.target.result;
+    wikiHero.classList.remove('is-empty');
+  };
+
+  reader.onerror=function(){
+    alert('图片读取失败，请重新选择');
+  };
+
+  reader.readAsDataURL(file);
+  this.value='';
+});
+
+/*
+ * 如果远程示例图加载失败，
+ * 自动显示空白头图提示。
+ */
+wikiHeroImage.addEventListener('error',function(){
+  this.removeAttribute('src');
+  wikiHero.classList.add('is-empty');
+});
+
+/* ==================== 事实速览展开 ==================== */
+
+wikiFactsButton.addEventListener('click',function(){
+  var willOpen=!wikiFacts.classList.contains('open');
+
+  wikiFacts.classList.toggle('open',willOpen);
+  wikiFactsButton.setAttribute(
+    'aria-expanded',
+    willOpen ? 'true' : 'false'
+  );
+});
+
+/* ==================== 注释与引用折叠展开 ==================== */
+
+/*
+ * 给一个小章节添加折叠功能：
+ * buttonId 是按钮，
+ * contentId 是按钮下面的内容。
+ */
+function setupReferenceToggle(buttonId, contentId) {
+  var button = document.getElementById(buttonId);
+  var content = document.getElementById(contentId);
+
+  if (!button || !content) {
+    return;
+  }
+
+  button.addEventListener('click', function() {
+    var willOpen = !button.classList.contains('open');
+
+    button.classList.toggle('open', willOpen);
+    content.hidden = !willOpen;
+
+    button.setAttribute(
+      'aria-expanded',
+      willOpen ? 'true' : 'false'
+    );
+  });
+}
+
+/* 注释折叠 */
+setupReferenceToggle(
+  'wikiNoteButton',
+  'wikiNoteList'
+);
+
+/* 引用折叠 */
+setupReferenceToggle(
+  'wikiReferenceButton',
+  'wikiReferenceList'
+);
+
+/* ==================== 控制栏显示与隐藏 ==================== */
+
+btnToggleControls.addEventListener('click',function(){
+  var willHide=!labControls.classList.contains('is-hidden');
+
+  labControls.classList.toggle('is-hidden',willHide);
+  btnToggleControls.textContent=willHide ? '⚙' : '隐藏';
+  btnToggleControls.setAttribute(
+    'aria-label',
+    willHide ? '显示实验按钮' : '隐藏实验按钮'
+  );
+});
+
+/* ==================== 阻止示例链接跳走 ==================== */
+
+document.querySelectorAll('a[href="#"]').forEach(function(link){
+  link.addEventListener('click',function(event){
+    event.preventDefault();
+  });
+});
+
+/* 默认使用中文 */
+setLanguage('zh');
+
+})();
+</script>
+</body>
+</html>
