@@ -1,0 +1,8306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>美化编辑器</title>
+<link rel="stylesheet" href="https://fontsapi.zeoseven.com/136/hans-medium/result.css">
+<link rel="stylesheet" href="https://fontsapi.zeoseven.com/144/main/result.css">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%}
+
+:root{
+  --page-bg:#fffffe;--card-bg:#fffffe;
+  --text-color:#000;--text-body:#1c1c1e;--text-secondary:#536471;
+  --follow-bg:#000;--follow-text:#fff;
+  --editor-bg:#f5f5f5;--editor-border:#e0e0e0;
+  --editor-accent:#1d9bf0;--editor-card:#fff;
+}
+body{
+  background:var(--editor-bg);color:var(--text-color);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  transition:background-color .3s,color .3s;
+}
+body.dark #tweetPage{
+  --page-bg:#000;--card-bg:#000;
+  --text-color:#D7D7D7;--text-body:#D7D7D7;--text-secondary:#73787D;
+  --follow-bg:#fff;--follow-text:#000;
+  --editor-bg:#0a0a0a;--editor-border:#2a2a2a;--editor-card:#161616;
+}
+
+.editor-panel{
+  width:100%;min-height:100vh;padding:20px 16px 100px;
+  display:flex;flex-direction:column;gap:14px;background:var(--editor-bg);
+}
+body.preview-mode .editor-panel{display:none}
+
+.editor-header{display:flex;align-items:center;justify-content:space-between;padding:4px 0}
+.editor-header h2{font-size:20px;font-weight:700;color:var(--text-color)}
+
+.editor-section{
+  background:var(--editor-card);border:1px solid var(--editor-border);
+  border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;
+}
+.editor-section-title{
+  font-size:12px;font-weight:700;color:var(--text-secondary);
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.editor-row{display:flex;flex-direction:column;gap:4px}
+.editor-row label{font-size:13px;font-weight:600;color:var(--text-color)}
+.editor-row input[type="text"],
+.editor-row input[type="number"],
+.editor-row input[type="url"],
+.editor-row select{
+  width:100%;padding:10px 12px;border:1px solid var(--editor-border);
+  border-radius:10px;background:var(--editor-bg);color:var(--text-color);
+  font-size:15px;font-family:inherit;outline:none;transition:border-color .2s;
+}
+.editor-row input:focus,.editor-row select:focus{border-color:var(--editor-accent)}
+.editor-row input[readonly]{opacity:.5}
+
+.editor-inline{display:flex;gap:10px;align-items:flex-end}
+.editor-inline .editor-row{flex:1}
+
+.editor-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.editor-toggle label{font-size:13px;font-weight:600;color:var(--text-color)}
+.toggle-switch{position:relative;width:44px;height:26px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{
+  position:absolute;inset:0;background:#ccc;border-radius:26px;cursor:pointer;transition:background .3s;
+}
+.toggle-slider::before{
+  content:"";position:absolute;width:20px;height:20px;left:3px;bottom:3px;
+  background:#fff;border-radius:50%;transition:transform .3s;
+}
+.toggle-switch input:checked+.toggle-slider{background:var(--editor-accent)}
+.toggle-switch input:checked+.toggle-slider::before{transform:translateX(18px)}
+
+.template-bar{display:flex;gap:8px;overflow-x:auto;padding:2px 0;-webkit-overflow-scrolling:touch}
+.template-bar::-webkit-scrollbar{display:none}
+.template-tab{
+  padding:10px 20px;border:1.5px solid var(--editor-border);border-radius:12px;
+  background:var(--editor-card);color:var(--text-color);
+  font-size:14px;font-weight:600;font-family:inherit;white-space:nowrap;
+  cursor:pointer;transition:all .2s;flex-shrink:0;
+}
+.template-tab.active{background:var(--text-color);color:var(--page-bg);border-color:var(--text-color)}
+.template-tab:disabled{opacity:.35;cursor:not-allowed}
+
+.char-bar{display:flex;gap:8px;align-items:center}
+.char-bar select{
+  flex:1;padding:10px 12px;border:1px solid var(--editor-border);border-radius:10px;
+  background:var(--editor-bg);color:var(--text-color);font-size:14px;font-family:inherit;outline:none;
+}
+.char-btn{
+  padding:10px 14px;border:1px solid var(--editor-border);border-radius:10px;
+  background:var(--editor-card);color:var(--text-color);
+  font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;
+  transition:all .15s;
+}
+.char-btn:active{transform:scale(.95)}
+.char-btn-danger{color:#ef4444}
+body.dark .char-btn-danger{color:#f87171}
+
+.avatar-input-row{display:flex;gap:8px;align-items:center}
+.avatar-input-row input[type="url"]{flex:1;min-width:0}
+.avatar-upload-label{
+  padding:10px 14px;border:1px solid var(--editor-border);border-radius:10px;
+  background:var(--editor-card);color:var(--editor-accent);
+  font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:all .15s;display:flex;align-items:center;gap:4px;
+}
+.avatar-upload-label:active{transform:scale(.95)}
+.avatar-thumb{
+  width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0;
+  border:2px solid var(--editor-border);background:var(--editor-bg);
+  display:none;align-items:center;justify-content:center;
+}
+.avatar-thumb.has-img{display:flex}
+.avatar-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+
+.rich-toolbar{
+  display:flex;align-items:center;gap:2px;padding:4px;
+  background:var(--editor-bg);border-radius:10px;flex-wrap:wrap;
+}
+.tool-btn{
+  width:36px;height:34px;border:none;border-radius:8px;background:transparent;
+  color:var(--text-color);font-size:15px;font-family:inherit;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0;
+}
+.tool-btn:active{background:var(--editor-border)}
+.tool-btn svg{
+  width:18px;
+  height:18px;
+  display:block;
+}
+.tool-sep{width:1px;height:20px;background:var(--editor-border);margin:0 2px;flex-shrink:0}
+
+.hl-bar{
+  display:flex;align-items:center;gap:6px;padding:6px 8px;
+  background:var(--editor-bg);border-radius:10px;flex-wrap:wrap;
+}
+.hl-label{font-size:12px;font-weight:600;color:var(--text-secondary);white-space:nowrap;margin-right:2px}
+.hl-dot{
+  width:26px;height:26px;border:2.5px solid transparent;border-radius:50%;
+  cursor:pointer;transition:transform .15s,border-color .15s;flex-shrink:0;
+}
+.hl-dot:active{transform:scale(.88)}
+.hl-dot-clear{
+  background:var(--editor-card)!important;border:1.5px solid var(--editor-border)!important;
+  font-size:11px;color:var(--text-secondary);display:flex;align-items:center;justify-content:center;
+}
+
+.rich-editor{
+  position:relative;min-height:140px;max-height:400px;padding:12px;
+  border:1px solid var(--editor-border);border-radius:10px;
+  background:var(--editor-bg);color:var(--text-color);
+  font-size:15px;font-family:inherit;line-height:1.6;outline:none;
+  overflow-y:auto;word-wrap:break-word;overflow-wrap:anywhere;transition:border-color .2s;
+}
+.rich-editor:focus{border-color:var(--editor-accent)}
+.rich-editor.is-empty::before{
+  content:attr(data-placeholder);color:var(--text-secondary);pointer-events:none;
+}
+
+/*
+ * 阻止旧草稿里的 mark 显示浏览器默认黄色。
+ * 新马克笔使用 .text-highlight。
+ */
+.rich-editor mark,
+.rich-editor .text-highlight,
+.tweet-body mark,
+.tweet-body .text-highlight,
+#notesPage .notes-original-body mark,
+#notesPage .notes-original-body .text-highlight {
+  background-color: transparent;
+}
+
+.rich-editor mark, 
+.rich-editor .text-highlight {
+  border-radius: 2px;
+  padding: 1px 3px;
+  color: inherit;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.rich-editor b,.rich-editor strong{font-weight:700}
+.rich-editor i,.rich-editor em{font-style:italic}
+.rich-editor u{text-decoration:underline}
+.rich-editor s,.rich-editor strike{text-decoration:line-through}
+.rich-editor span[style*="background-color"]{border-radius:2px;padding:1px 0}
+
+.action-btn{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:14px;border:none;border-radius:12px;font-size:16px;font-weight:700;
+  font-family:inherit;cursor:pointer;transition:opacity .2s,transform .1s;
+}
+.action-btn:active{transform:scale(.97)}
+.btn-theme{
+  background:var(--text-color);color:var(--page-bg);
+  padding:10px 16px;font-size:14px;width:auto;border-radius:10px;
+}
+
+.floating-preview-btn{
+  position:fixed;z-index:9999;bottom:24px;left:50%;transform:translateX(-50%);
+  padding:14px 32px;border:none;border-radius:50px;
+  background:var(--editor-accent);color:#fff;font-size:16px;font-weight:700;
+  font-family:inherit;cursor:pointer;
+  box-shadow:0 4px 20px rgba(29,155,240,.4);
+  transition:opacity .2s,transform .1s;
+}
+.floating-preview-btn:active{transform:translateX(-50%) scale(.95)}
+body.preview-mode .floating-preview-btn{display:none}
+
+.toast{
+  position:fixed;z-index:99999;bottom:80px;left:50%;
+  transform:translateX(-50%) translateY(20px);
+  padding:10px 24px;border-radius:50px;background:rgba(0,0,0,.8);color:#fff;
+  font-size:14px;font-weight:600;font-family:inherit;
+  pointer-events:none;opacity:0;transition:opacity .3s,transform .3s;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+#tweetPage{display:none}
+body.preview-mode #tweetPage{
+  display:flex;flex-direction:column;background:var(--page-bg);overflow:hidden;z-index:10000;
+}
+
+.preview-actions{display:none}
+body.preview-mode .preview-actions{
+  display:flex;position:fixed;z-index:10001;bottom:90px;left:50%;transform:translateX(-50%);
+  gap:10px;opacity:1;transition:opacity .3s;
+}
+body.preview-mode .preview-actions.fade-out{opacity:0;pointer-events:none}
+.preview-action-btn{
+  padding:10px 22px;border:none;border-radius:50px;
+  background:rgba(0,0,0,.65);color:#fff;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;
+  white-space:nowrap;transition:transform .1s;
+}
+.preview-action-btn:active{transform:scale(.95)}
+.preview-action-btn.btn-save{background:rgba(29,155,240,.85)}
+
+.save-modal{
+  display:none;position:fixed;z-index:99999;inset:0;
+  align-items:center;justify-content:center;flex-direction:column;
+}
+.save-modal.show{display:flex}
+.save-modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.75)}
+.save-modal-body{
+  position:relative;z-index:1;max-width:90vw;max-height:88vh;
+  display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px;
+}
+.save-modal-hint{color:#fff;font-size:14px;font-weight:600;text-align:center}
+.save-modal-img{
+  max-width:100%;max-height:68vh;border-radius:10px;
+  box-shadow:0 4px 30px rgba(0,0,0,.5);display:block;
+}
+.save-modal-btns{display:flex;gap:10px}
+.save-modal-btn{
+  padding:10px 28px;border:none;border-radius:50px;
+  font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;
+}
+.save-modal-btn-download{background:var(--editor-accent);color:#fff}
+.save-modal-btn-close{background:rgba(255,255,255,.2);color:#fff;backdrop-filter:blur(10px)}
+
+.top-nav-wrapper{z-index:10;width:100%;flex-shrink:0;padding:0 30px 0;;background:var(--page-bg)}
+.top-nav-bar{position:relative;width:100%;height:50px;overflow:hidden}
+.top-nav-img{width:108%;max-width:none;height:auto;display:block;margin-left:-4%;pointer-events:none}
+.top-nav-title{
+  position:absolute;z-index:5;top:60%;left:50%;transform:translate(-50%,-50%);
+  color:var(--text-color);font-size:16.5px;font-weight:550;line-height:1;
+  letter-spacing:.5px;white-space:nowrap;pointer-events:none;
+}
+.top-nav-grok{
+  position:absolute;z-index:5;top:62%;right:10%;transform:translateY(-50%);
+  width:22px;height:22px;display:flex;align-items:center;justify-content:center;pointer-events:none;
+}
+.top-nav-grok svg{width:100%;height:100%;display:block;fill:var(--text-color)}
+
+.scroll-content{
+  flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
+  padding:10px 30px 30px;-webkit-overflow-scrolling:touch;
+}
+.tweet-card{position:relative;z-index:1;width:100%;margin:14px 0;color:var(--text-color);background:var(--card-bg);overflow:visible}
+.tweet-header{position:relative;z-index:2;display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.tweet-avatar{
+  position:relative;z-index:2;width:45px;height:45px;flex-shrink:0;
+  overflow:hidden;border-radius:50%;background:#e5e5ea;
+}
+.tweet-avatar img{width:100%;height:100%;display:block;object-fit:cover;pointer-events:none}
+.tweet-user-info{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}
+.tweet-display-name{
+  display:flex;align-items:center;gap:3px;min-width:0;
+  color:var(--text-color);font-size:15px;font-weight:550;line-height:1.3;overflow-wrap:anywhere;
+}
+.tweet-verified{width:14px;height:14px;flex-shrink:0;display:inline-flex}
+.tweet-verified svg{width:100%;height:100%;display:block}
+.tweet-handle{color:var(--text-secondary);font-size:13.5px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.tweet-header-action{flex-shrink:0;margin-top:-15px;margin-right:-5px}
+.tweet-header-action-img{width:62px;height:auto;display:block;pointer-events:none}
+
+.tweet-translate-hint{
+  display:none;align-items:center;gap:4px;margin-top:1px;margin-bottom:3px;
+  color:var(--text-secondary);font-size:12px;font-weight:590;line-height:1.3;white-space:nowrap;
+}
+.tweet-translate-hint.visible{display:flex}
+.tweet-translate-hint-icon{
+  width:13px;height:13px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;
+}
+.tweet-translate-hint-icon svg{width:100%;height:100%;display:block;fill:var(--text-secondary)}
+
+.tweet-body{
+  position:relative;z-index:2;width:100%;margin-bottom:5px;
+  color:var(--text-body);font-size:16px;font-weight:580;line-height:1.55;
+  white-space:pre-wrap;overflow-wrap:anywhere;
+}
+.tweet-body mark, .tweet-body .text-highlight {
+  border-radius: 2px;
+  padding: 1px 3px;
+  -webkit-text-fill-color: currentColor;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.tweet-body strong,.tweet-body b{font-weight:bolder}
+.tweet-body em,.tweet-body i{font-style:italic}
+.tweet-body u{text-decoration:underline}
+.tweet-body s,.tweet-body strike,.tweet-body del{text-decoration:line-through}
+.tweet-body span[style*="background-color"]{border-radius:2px;padding:1px 0}
+body.dark .tweet-body span[style*="background-color"]{color:#1c1c1e}
+.tweet-body.indented{text-indent:2em}
+.tweet-body.indented div,.tweet-body.indented p{text-indent:2em}
+
+.tweet-rate-translation{
+  display:none;align-items:center;gap:1px;margin-top:0;margin-bottom:15px;
+  color:var(--text-secondary);font-size:12px;font-weight:590;line-height:1.3;white-space:nowrap;
+}
+.tweet-rate-translation.visible{display:flex}
+.tweet-rate-icon{width:55px;height:auto;display:inline-block;vertical-align:middle;pointer-events:none}
+
+.tweet-meta{
+  position:relative;z-index:2;width:100%;color:var(--text-secondary);
+  font-size:13px;font-weight:590;line-height:1.4;overflow-wrap:anywhere;
+}
+body.dark .tweet-meta{color:var(--text-secondary)}
+.tweet-meta-views{color:var(--text-color);font-weight:590}
+
+.tweet-actions-bar{position:relative;z-index:999;width:100%;background:transparent;overflow:visible}
+.tweet-actions-img{
+  position:relative;z-index:1000;width:102%;max-width:none;height:auto;
+  display:block;margin-top:-18px;margin-left:-1%;pointer-events:none;
+}
+.tweet-actions-numbers{position:absolute;z-index:1001;inset:0;pointer-events:none}
+.action-count{
+  position:absolute;color:var(--text-secondary);font-size:13px;font-weight:600;
+  line-height:1;white-space:nowrap;pointer-events:none;
+}
+.action-count-reply{top:56%;left:8%}
+.action-count-retweet{top:56%;left:31.5%}
+.action-count-like{top:56%;left:54.5%}
+.action-count-bookmark{top:56%;left:78%}
+
+.bottom-tab-bar{z-index:10;width:100%;flex-shrink:0;padding:0 30px 2px;background:var(--page-bg)}
+.bottom-tab-img{width:108%;max-width:none;height:auto;display:block;margin-left:-4%;pointer-events:none}
+
+body.dark .top-nav-img,
+body.dark .tweet-header-action-img,
+body.dark .tweet-rate-icon {
+  filter: invert(1);
+}
+@media(max-width:430px){
+.top-nav-wrapper{padding:0 20px 0}
+  .scroll-content{padding:10px 20px 24px}
+  .bottom-tab-bar{padding:0 20px 2px}
+}
+
+/* 工具箱编辑界面，不改变推文成品排版 */
+.editor-panel {
+  --editor-bg: #fdfdfb;
+  --editor-card: #ffffff;
+  --editor-border: #e8e8e2;
+  --editor-accent: #555650;
+  --text-color: #292927;
+  --text-secondary: #8f9089;
+
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 17px 100px;
+  gap: 0;
+  background: var(--editor-bg);
+  font-family: "Courier Prime", "Courier New", monospace;
+}
+
+body {
+  background: #fdfdfb;
+}
+
+.editor-header {
+  padding: 0 0 24px;
+  gap: 16px;
+}
+
+.editor-header h2 {
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.editor-section {
+  padding: 22px 0;
+  gap: 14px;
+  border: 0;
+  border-top: 1px solid var(--editor-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.editor-section-title {
+  color: #555650;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.editor-row,
+.editor-inline,
+.char-bar {
+  min-width: 0;
+}
+
+.editor-inline .editor-row,
+.char-bar select {
+  min-width: 0;
+}
+
+.editor-row label,
+.editor-toggle > label:first-child {
+  color: #66675f;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.editor-row input[type="text"],
+.editor-row input[type="number"],
+.editor-row input[type="url"],
+.editor-row select,
+.char-bar select {
+  min-height: 42px;
+  border-radius: 0;
+  background: #fff;
+  color: #383834;
+  font-size: 16px;
+}
+
+.char-btn,
+.avatar-upload-label,
+.btn-theme {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #deded7;
+  border-radius: 0;
+  background: #fff;
+  color: #66675f;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.roll-data-btn {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid #555650;
+  border-radius: 0;
+  background: #555650;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.roll-data-btn:active {
+  background: #454640;
+  transform: scale(0.99);
+}
+
+.roll-data-btn:focus-visible {
+  outline: 2px solid #777870;
+  outline-offset: 3px;
+}
+
+.char-btn-danger {
+  color: #9a6262;
+}
+
+body.dark .char-btn-danger {
+  color: #9a6262;
+}
+
+.avatar-upload-label {
+  justify-content: center;
+}
+
+.rich-toolbar,
+.hl-bar {
+  border-radius: 0;
+  background: #f3f3ef;
+}
+
+.tool-btn {
+  border-radius: 3px;
+}
+
+.rich-editor {
+  border-radius: 0;
+  background: #fff;
+  color: #383834;
+  font-size: 16px;
+}
+
+.floating-preview-btn {
+  left: auto;
+  right: 18px;
+  bottom: 18px;
+  transform: none;
+  padding: 12px 18px;
+  border: 1px solid #555650;
+  border-radius: 0;
+  background: #555650;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.12);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.floating-preview-btn:active {
+  transform: scale(0.97);
+}
+
+.preview-action-btn,
+.save-modal-btn {
+  border-radius: 4px;
+  font-weight: 400;
+}
+
+.preview-action-btn.btn-save,
+.save-modal-btn-download {
+  background: #555650;
+}
+
+.editor-panel button,
+.editor-panel input,
+.editor-panel select {
+  font-family: inherit;
+}
+
+.editor-panel button:focus-visible,
+.editor-panel select:focus-visible {
+  outline: 2px solid #777870;
+  outline-offset: 3px;
+}
+
+/* 只有预览正文跟随“正文字体”设置 */
+.tweet-body,
+#notesPage .notes-original-body {
+  font-family: var(
+    --selected-font,
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Text",
+    "PingFang SC",
+    "Helvetica Neue",
+    Helvetica,
+    Arial,
+    sans-serif
+  ) !important;
+}
+/* ==================== 订阅按钮：调整区 ==================== */
+
+.tweet-header-action {
+  position: relative;
+
+  /* 整个按钮的位置：数值越负，越往上 */
+  margin-top: -15px;
+
+  /* 整个按钮的位置：数值越负，越往右 */
+  margin-right: -5px;
+}
+
+.tweet-header-action-img {
+  /* 按钮图片宽度，文字也会跟随图片位置 */
+  width: 62px;
+  height: auto;
+  display: block;
+}
+
+.subscribe-label {
+  position: absolute;
+  z-index: 1;
+
+  /* 文字横向位置：50% 居中；增大往右，减小往左 */
+  left: 50%;
+
+  /* 文字纵向位置：50% 居中；增大往下，减小往上 */
+  top: 50%;
+
+  /* 以文字中心对齐上面的位置，通常不用改 */
+  transform: translate(-50%, -50%);
+
+  /* 字号：数值越大，字越大 */
+  font-size: 12px;
+
+  /* 粗细：400 常规，500 中等，600 较粗，700 粗体 */
+  font-weight: 600;
+
+  /* 字间距：想让“订 阅”更疏一些，可以改成 1px */
+  letter-spacing: 0;
+
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+
+  /* 浅色模式文字颜色 */
+  color: #ffffff;
+}
+
+/* 深色模式文字颜色 */
+body.dark .subscribe-label {
+  color: #000000;
+}
+
+
+/* ==================== 底部回复文字：调整区 ==================== */
+
+.bottom-reply-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.bottom-reply-label {
+  /* 横向偏移：负数往左，正数往右 */
+  --reply-x: -6px;
+
+  /* 纵向偏移：负数往上，正数往下 */
+  --reply-y: -40px;
+
+  position: absolute;
+  z-index: 1;
+
+  /* 基准位置，之后通常不用改 */
+  left: 12px;
+  right: 45px;
+  top: 50%;
+
+  /* 先垂直居中，再按上面的像素数移动 */
+  transform: translate(
+    var(--reply-x),
+    calc(-50% + var(--reply-y))
+  );
+
+  /* 字号 */
+  font-size: 15px;
+
+  font-weight: 550;
+
+  /* 字间距 */
+  letter-spacing: 0;
+
+  line-height: 1.4;
+  text-align: left;
+
+  /* 保持单行，太长时显示省略号 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  pointer-events: none;
+
+  /* 浅色模式文字颜色 */
+  color: #57616D;
+}
+
+/* 深色模式文字颜色 */
+body.dark .bottom-reply-label {
+  color: #929292;
+}
+#pageHeightRow[hidden] {
+  display: none;
+}
+
+body.preview-mode {
+  position: relative;
+}
+
+body.preview-mode.auto-tweet #tweetPage > .scroll-content {
+  flex: none;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+/* 编辑页板头 */
+.editor-panel > .editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0 0 40px;
+}
+
+.editor-banner {
+  display: block;
+  width: 150px;
+  max-width: 75%;
+  height: auto;
+}
+
+/* 去掉板头下方的第一条横线 */
+.editor-panel > .editor-header + .editor-section {
+  border-top: 0;
+  padding-top: 0;
+}
+
+/* ==================== 原版备忘录视觉框架 ==================== */
+
+.notes-only-section {
+  display: none;
+}
+
+body.notes-editor-mode .notes-only-section {
+  display: flex;
+}
+
+
+#notesPage {
+  --notes-bg: #fffffe;
+  --notes-text-color: #000000;
+  --notes-text-body: #333333;
+  --notes-text-secondary: #8e8e93;
+  --notes-accent: #e4af0a;
+
+  display: none;
+  width: 430px;
+  height: 932px;
+  overflow: hidden;
+  background: var(--notes-bg);
+}
+
+body.preview-mode.notes-editor-mode #tweetPage {
+  display: none;
+}
+
+body.preview-mode.notes-editor-mode #notesPage {
+  display: block;
+}
+
+#notesPage .notes-wrapper {
+  width: 430px;
+  height: 100%;
+  overflow: hidden;
+  background: var(--notes-bg);
+  position: relative;
+}
+
+#notesPage .phone-container {
+  width: 430px;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--notes-bg);
+}
+
+/* 原代码的图片顶栏 */
+#notesPage .notes-original-top-bar {
+  width: 100%;
+  padding-top: 5px;
+  margin-bottom: -23px;
+  background: var(--notes-bg);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+#notesPage .notes-original-top-inner {
+  position: relative;
+  line-height: 0;
+  font-size: 0;
+}
+
+#notesPage .notes-original-top-bar img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+#notesPage .notes-original-folder {
+  position: absolute;
+  z-index: 10;
+  left: 8.5%;
+  bottom: 26px;
+  max-width: 245px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: var(--notes-accent);
+  font-size: 18px;
+  font-weight: 550;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+/* 自由文字编辑区域 */
+#notesPage .notes-original-editor {
+  padding: 20px 30px 6px;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--notes-bg);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+#notesPage .notes-original-editor::-webkit-scrollbar {
+  display: none;
+}
+
+#notesPage .notes-original-date {
+  padding: 2px 0 16px;
+  color: var(--notes-text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.2px;
+  text-align: center;
+}
+
+#notesPage .notes-original-date:empty {
+  display: none;
+}
+
+#notesPage .notes-original-title {
+  margin: 0 0 8px;
+  color: var(--notes-text-color);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+#notesPage .notes-original-title:empty {
+  display: none;
+}
+
+#notesPage .notes-original-body {
+  color: var(--notes-text-body);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+#notesPage .notes-original-body b,
+#notesPage .notes-original-body strong {
+  font-weight: 700;
+}
+
+#notesPage .notes-original-body i,
+#notesPage .notes-original-body em {
+  font-style: italic;
+}
+
+#notesPage .notes-original-body u {
+  text-decoration: underline;
+}
+
+#notesPage .notes-original-body s,
+#notesPage .notes-original-body strike,
+#notesPage .notes-original-body del {
+  text-decoration: line-through;
+}
+
+#notesPage .notes-original-body mark,
+#notesPage .notes-original-body .text-highlight {
+  border-radius: 2px;
+  padding: 1px 3px;
+  -webkit-text-fill-color: currentColor;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+#notesPage .notes-original-body span[style*="background-color"] {
+  border-radius: 2px;
+  padding: 1px 0;
+}
+
+#notesPage .notes-original-body.indented {
+  text-indent: 2em;
+}
+
+#notesPage .notes-original-body.indented div,
+#notesPage .notes-original-body.indented p {
+  text-indent: 2em;
+}
+
+/* 原代码的图片底栏 */
+#notesPage .notes-original-bottom-bar {
+  width: 100%;
+  height: 88px;
+  margin-top: -44px;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 20;
+  background: var(--notes-bg);
+  line-height: 0;
+  font-size: 0;
+}
+
+#notesPage .notes-original-bottom-bar img {
+  width: 100%;
+  height: auto;
+  display: block;
+  vertical-align: top;
+}
+
+/* 浅色模式：只显示浅色顶栏和底栏 */
+#notesPage img.notes-light-img {
+  display: block !important;
+}
+
+#notesPage img.notes-dark-img {
+  display: none !important;
+}
+
+/* 深色模式 */
+body.dark #notesPage {
+  --notes-bg: #000000;
+  --notes-text-color: #ffffff;
+  --notes-text-body: #e5e5e5;
+  --notes-text-secondary: #8e8e93;
+}
+
+/* 深色模式：只显示深色顶栏和底栏 */
+body.dark #notesPage img.notes-light-img {
+  display: none !important;
+}
+
+body.dark #notesPage img.notes-dark-img {
+  display: block !important;
+}
+
+/* 完整长图 */
+body.preview-mode.auto-tweet.notes-editor-mode #notesPage {
+  height: auto !important;
+  min-height: 932px;
+  overflow: visible;
+}
+
+body.preview-mode.auto-tweet.notes-editor-mode
+#notesPage .notes-wrapper,
+body.preview-mode.auto-tweet.notes-editor-mode
+#notesPage .phone-container {
+  height: auto;
+  min-height: 932px;
+  overflow: visible;
+}
+
+body.preview-mode.auto-tweet.notes-editor-mode
+#notesPage .notes-original-editor {
+  flex: none;
+  min-height: 787px;
+  height: auto;
+  overflow: visible;
+}
+
+/* ==================== 推文 / 备忘录分类 ==================== */
+
+.editor-type-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.editor-type-tab {
+  min-width: 0;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--editor-border);
+  border-radius: 0;
+  background: #ffffff;
+  color: #66675f;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.editor-type-tab.active {
+  border-color: #555650;
+  background: #555650;
+  color: #ffffff;
+}
+
+/* 默认处于推文模式，因此先隐藏备忘录设置 */
+.notes-only-section {
+  display: none;
+}
+
+/* 切换到备忘录后显示备忘录设置 */
+body.notes-editor-mode .notes-only-section {
+  display: flex;
+}
+
+/* 备忘录模式隐藏推文专属设置 */
+body.notes-editor-mode .character-section,
+body.notes-editor-mode .template-x {
+  display: none;
+}
+
+body.notes-editor-mode .tweet-only-setting {
+  display: none;
+}
+
+.rich-editor img,
+.tweet-body img,
+#notesPage .notes-original-body img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  margin: 10px auto;
+  object-fit: contain;
+  background: transparent;
+}
+
+/* 只加宽备忘录正文：左右各扩展 10px */
+#notesPage .notes-original-body {
+  position: relative;
+  left: -10px;
+  width: calc(100% + 20px);
+  max-width: none;
+}
+
+/* 备忘录标题与加宽后的正文左侧对齐 */
+#notesPage .notes-original-title {
+  position: relative;
+  left: -10px;
+}
+
+/* ==================== 图片大小设置弹窗 ==================== */
+
+.image-size-modal {
+  display: none;
+  position: fixed;
+  z-index: 100000;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  font-family: "Courier Prime", "Courier New", monospace;
+}
+
+.image-size-modal.show {
+  display: flex;
+}
+
+.image-size-modal-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: rgba(25, 25, 23, 0.46);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  cursor: pointer;
+}
+
+.image-size-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 390px);
+  max-height: min(620px, calc(100vh - 40px));
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid #deded7;
+  border-radius: 0;
+  background: #fdfdfb;
+  color: #292927;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.18);
+}
+
+.image-size-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.image-size-dialog-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.image-size-close {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 1px solid #deded7;
+  border-radius: 0;
+  background: #ffffff;
+  color: #66675f;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.image-size-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 170px;
+  max-height: 270px;
+  margin-bottom: 18px;
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid #e8e8e2;
+  background:
+    linear-gradient(45deg, #eeeeea 25%, transparent 25%),
+    linear-gradient(-45deg, #eeeeea 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #eeeeea 75%),
+    linear-gradient(-45deg, transparent 75%, #eeeeea 75%);
+  background-color: #fafaf8;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
+}
+
+.image-size-preview img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+}
+
+.image-size-control {
+  padding: 15px;
+  border: 1px solid #e8e8e2;
+  background: #ffffff;
+}
+
+.image-size-control-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.image-size-control-header label {
+  color: #66675f;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.image-size-number-wrap {
+  display: flex;
+  align-items: center;
+  width: 82px;
+  min-height: 38px;
+  border: 1px solid #deded7;
+  background: #fdfdfb;
+}
+
+.image-size-number-wrap input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 2px 8px 10px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #383834;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: right;
+}
+
+.image-size-number-wrap span {
+  padding-right: 10px;
+  color: #8f9089;
+  font-size: 13px;
+}
+
+.image-size-control input[type="range"] {
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  accent-color: #555650;
+  cursor: pointer;
+}
+
+.image-size-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.image-size-main-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.image-size-btn {
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid #deded7;
+  border-radius: 0;
+  background: #ffffff;
+  color: #66675f;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.image-size-btn:active,
+.image-size-close:active {
+  background: #f1f1ed;
+  transform: scale(0.98);
+}
+
+.image-size-btn-apply {
+  border-color: #555650;
+  background: #555650;
+  color: #ffffff;
+}
+
+.image-size-btn-apply:active {
+  background: #454640;
+}
+
+.image-size-btn-delete {
+  border-color: #d9bcbc;
+  color: #9a6262;
+}
+
+.image-size-modal button:focus-visible,
+.image-size-modal input:focus-visible {
+  outline: 2px solid #777870;
+  outline-offset: 3px;
+}
+
+body.dark .image-size-dialog {
+  border-color: #343430;
+  background: #1a1a18;
+  color: #eeeeeb;
+}
+
+body.dark .image-size-close,
+body.dark .image-size-btn,
+body.dark .image-size-control {
+  border-color: #3b3b37;
+  background: #242421;
+  color: #c8c8c2;
+}
+
+body.dark .image-size-preview {
+  border-color: #343430;
+  background:
+    linear-gradient(45deg, #292926 25%, transparent 25%),
+    linear-gradient(-45deg, #292926 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #292926 75%),
+    linear-gradient(-45deg, transparent 75%, #292926 75%);
+  background-color: #20201e;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
+}
+
+body.dark .image-size-number-wrap {
+  border-color: #3b3b37;
+  background: #181816;
+}
+
+body.dark .image-size-number-wrap input {
+  color: #eeeeeb;
+}
+
+body.dark .image-size-control-header label,
+body.dark .image-size-number-wrap span {
+  color: #999991;
+}
+
+body.dark .image-size-btn-apply {
+  border-color: #eeeeeb;
+  background: #eeeeeb;
+  color: #1a1a18;
+}
+
+body.dark .image-size-btn-delete {
+  border-color: #654949;
+  color: #d49393;
+}
+
+@media (max-width: 430px) {
+  .image-size-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .image-size-dialog {
+    width: 100%;
+    max-height: 86vh;
+    padding: 18px 17px max(18px, env(safe-area-inset-bottom));
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+  }
+
+  .image-size-preview {
+    min-height: 145px;
+    max-height: 230px;
+  }
+
+  .image-size-preview img {
+    max-height: 200px;
+  }
+}
+
+/* 中文弯引号使用苹方，避免显示成倾斜的西文引号 */
+.chinese-quote {
+  font-family: "PingFang SC", "Hiragino Sans GB",
+    "Heiti SC", sans-serif !important;
+  font-style: normal !important;
+  font-synthesis: none;
+}
+
+/* 本地头像上传框 */
+.avatar-local-upload {
+  flex: 1;
+  min-width: 0;
+  min-height: 58px;
+  padding: 10px 14px;
+  border: 1px dashed var(--editor-border);
+  background: #ffffff;
+  color: #66675f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.avatar-local-upload:active {
+  background: #f3f3ef;
+}
+
+.avatar-local-upload-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* ==================== 维基百科编辑器骨架 ==================== */
+
+/* 分类按钮改成三列 */
+.editor-type-tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* 默认隐藏维基百科专属设置 */
+.wiki-only-section {
+  display: none;
+}
+
+/* 进入维基百科模式后显示 */
+body.wiki-editor-mode .wiki-only-section {
+  display: flex;
+}
+
+/* 维基模式隐藏推文专属设置 */
+body.wiki-editor-mode .character-section,
+body.wiki-editor-mode .template-x,
+body.wiki-editor-mode .tweet-only-setting {
+  display: none;
+}
+
+/*
+ * 备忘录设置不能在维基模式出现。
+ * 这一条用于覆盖其他显示规则。
+ */
+body.wiki-editor-mode .notes-only-section {
+  display: none;
+}
+
+/* 维基百科固定使用浅色，不显示深色模式设置 */
+body.wiki-editor-mode .wiki-hide-setting {
+  display: none;
+}
+
+/* 头图上传区域 */
+.wiki-cover-upload-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  min-width: 0;
+}
+
+.wiki-cover-thumb {
+  display: none;
+  width: 92px;
+  height: 68px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid var(--editor-border);
+  background: #f3f3ef;
+}
+
+.wiki-cover-thumb.has-img {
+  display: block;
+}
+
+.wiki-cover-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wiki-cover-upload {
+  min-width: 0;
+  min-height: 68px;
+  flex: 1;
+  padding: 12px;
+  border: 1px dashed var(--editor-border);
+  background: #ffffff;
+  color: #66675f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.wiki-cover-upload:active {
+  background: #f3f3ef;
+}
+
+.wiki-cover-upload-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.wiki-remove-cover-btn,
+.wiki-future-btn,
+.wiki-block-buttons button {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #deded7;
+  border-radius: 0;
+  background: #ffffff;
+  color: #66675f;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.wiki-remove-cover-btn {
+  width: 100%;
+  cursor: pointer;
+}
+
+.wiki-remove-cover-btn:active {
+  background: #f3f3ef;
+  transform: scale(0.99);
+}
+
+.wiki-editor-hint {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.wiki-block-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.wiki-block-buttons button,
+.wiki-future-btn {
+  width: 100%;
+}
+
+.wiki-block-buttons button:disabled,
+.wiki-future-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.wiki-empty-box {
+  min-height: 64px;
+  padding: 18px 14px;
+  border: 1px dashed var(--editor-border);
+  background: rgba(255, 255, 255, 0.45);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 手机较窄时仍然保持按钮整齐 */
+@media (max-width: 390px) {
+  .editor-type-tab {
+    padding-right: 6px;
+    padding-left: 6px;
+    font-size: 12px;
+  }
+
+  .wiki-block-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .wiki-cover-upload-row {
+    flex-direction: column;
+  }
+
+  .wiki-cover-thumb {
+    width: 100%;
+    height: 150px;
+  }
+}
+
+/* ==================== 维基百科：注释与引用编辑器 ==================== */
+
+.wiki-source-create {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--editor-border);
+  background: #ffffff;
+}
+
+.wiki-source-type-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.wiki-source-type-btn {
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--editor-border);
+  border-radius: 0;
+  background: #ffffff;
+  color: #66675f;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.wiki-source-type-btn.active {
+  border-color: #555650;
+  background: #555650;
+  color: #ffffff;
+}
+
+.wiki-source-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.wiki-source-field label {
+  color: #66675f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.wiki-source-field input,
+.wiki-source-field textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--editor-border);
+  border-radius: 0;
+  outline: none;
+  background: #ffffff;
+  color: #383834;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.wiki-source-field textarea {
+  min-height: 92px;
+}
+
+.wiki-source-field input:focus,
+.wiki-source-field textarea:focus {
+  border-color: #777870;
+}
+
+.wiki-add-source-btn {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid #555650;
+  border-radius: 0;
+  background: #555650;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.wiki-add-source-btn:active {
+  background: #454640;
+  transform: scale(0.99);
+}
+
+.wiki-source-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.wiki-source-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wiki-source-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #555650;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.wiki-source-count {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.wiki-source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wiki-source-empty {
+  min-height: 60px;
+  padding: 16px 12px;
+  border: 1px dashed var(--editor-border);
+  background: rgba(255, 255, 255, 0.45);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wiki-source-item {
+  padding: 12px;
+  border: 1px solid var(--editor-border);
+  background: #ffffff;
+}
+
+.wiki-source-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.wiki-source-kind {
+  flex-shrink: 0;
+  padding: 4px 7px;
+  background: #f0f0eb;
+  color: #66675f;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.wiki-source-item-label {
+  min-width: 0;
+  flex: 1;
+  color: #383834;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.wiki-source-item-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.wiki-source-item-fields input,
+.wiki-source-item-fields textarea {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--editor-border);
+  border-radius: 0;
+  outline: none;
+  background: #fdfdfb;
+  color: #383834;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.wiki-source-item-fields textarea {
+  min-height: 78px;
+  resize: vertical;
+}
+
+.wiki-source-item-fields input:focus,
+.wiki-source-item-fields textarea:focus {
+  border-color: #777870;
+}
+
+.wiki-source-item-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.wiki-source-item-actions button {
+  min-height: 36px;
+  padding: 8px 6px;
+  border: 1px solid #deded7;
+  border-radius: 0;
+  background: #ffffff;
+  color: #66675f;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.wiki-source-item-actions button:active {
+  background: #f1f1ed;
+}
+
+.wiki-source-item-actions .wiki-source-delete {
+  color: #9a6262;
+}
+
+@media (max-width: 390px) {
+  .wiki-source-item-actions {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+/* ==================== 维基百科：自由文章板块 ==================== */
+
+/* 维基模式不使用推文/备忘录共用的正文框 */
+body.wiki-editor-mode .shared-body-section {
+  display: none;
+}
+
+.wiki-block-create-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.wiki-block-create-btn {
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 7px;
+  border: 1px solid #deded7;
+  border-radius: 0;
+  background: #ffffff;
+  color: #66675f;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.wiki-block-create-btn:active {
+  background: #f1f1ed;
+  transform: scale(0.98);
+}
+
+.wiki-block-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wiki-block-list-empty {
+  min-height: 76px;
+  padding: 18px 14px;
+  border: 1px dashed var(--editor-border);
+  background: rgba(255, 255, 255, 0.45);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: center;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wiki-block-editor-card {
+  border: 1px solid var(--editor-border);
+  background: #ffffff;
+}
+
+.wiki-block-editor-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 11px;
+  border-bottom: 1px solid var(--editor-border);
+  background: #f7f7f3;
+}
+
+.wiki-block-type-badge {
+  flex-shrink: 0;
+  padding: 4px 7px;
+  background: #e9e9e3;
+  color: #66675f;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.wiki-block-card-name {
+  min-width: 0;
+  flex: 1;
+  color: #555650;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wiki-block-order-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 5px;
+}
+
+.wiki-block-order-actions button {
+  width: 31px;
+  height: 31px;
+  padding: 0;
+  border: 1px solid #deded7;
+  border-radius: 0;
+  background: #ffffff;
+  color: #66675f;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.wiki-block-order-actions button:active {
+  background: #ecece7;
+}
+
+.wiki-block-order-actions .wiki-block-delete-btn {
+  color: #9a6262;
+}
+
+.wiki-block-editor-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.wiki-block-text-input {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 11px;
+  border: 1px solid var(--editor-border);
+  border-radius: 0;
+  outline: none;
+  background: #fdfdfb;
+  color: #383834;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.wiki-block-text-input:focus {
+  border-color: #777870;
+}
+
+/* 普通正文富文本输入框 */
+.wiki-paragraph-editor {
+  width: 100%;
+  min-height: 120px;
+  padding: 11px;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--editor-border);
+  border-radius: 0;
+  outline: none;
+  background: #fdfdfb;
+  color: #383834;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.wiki-paragraph-editor:focus {
+  border-color: #777870;
+}
+
+.wiki-paragraph-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #a0a098;
+  pointer-events: none;
+}
+
+/* 正文内插入的注释、引用标记 */
+.wiki-source-token {
+  position: relative;
+  top: -0.15em;
+  margin: 0 1px;
+  color: #3366cc;
+  font-size: 0.78em;
+  font-weight: 500;
+  line-height: 0;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.wiki-source-insert-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+
+.wiki-source-insert-select {
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 9px;
+  border: 1px solid var(--editor-border);
+  border-radius: 0;
+  outline: none;
+  background: #ffffff;
+  color: #555650;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.wiki-source-insert-btn {
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid #555650;
+  border-radius: 0;
+  background: #555650;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wiki-source-insert-btn:disabled,
+.wiki-source-insert-select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.wiki-block-small-hint {
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+@media (max-width: 390px) {
+  .wiki-block-create-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==================================================
+   维基百科正式预览页
+================================================== */
+
+#wikiPreviewPage {
+  --wiki-bg: #ffffff;
+  --wiki-text: #202122;
+  --wiki-secondary: #54595d;
+  --wiki-border: #a2a9b1;
+  --wiki-light-border: #c8ccd1;
+  --wiki-link: #3366cc;
+  --wiki-soft-bg: #f8f9fa;
+
+  display: none;
+  width: 430px;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--wiki-bg);
+  color: var(--wiki-text);
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.preview-mode.wiki-editor-mode #tweetPage,
+body.preview-mode.wiki-editor-mode #notesPage {
+  display: none;
+}
+
+body.preview-mode.wiki-editor-mode #wikiPreviewPage {
+  display: block;
+}
+
+/* 完整长图模式 */
+body.preview-mode.auto-tweet.wiki-editor-mode #wikiPreviewPage {
+  height: auto !important;
+  min-height: 1px;
+  overflow: visible;
+}
+
+/* ==================== 顶栏 ==================== */
+
+.wiki-preview-topbar {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #ffffff;
+  line-height: 0;
+}
+
+.wiki-preview-topbar img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.wiki-preview-search-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  line-height: normal;
+}
+
+.wiki-preview-search-placeholder {
+  position: absolute;
+  top: 52%;
+  left: 58%;
+  transform: translateY(-50%);
+  color: #72777d;
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.wiki-preview-search-button {
+  position: absolute;
+  top: 52%;
+  right: 6%;
+  transform: translateY(-50%);
+  color: #404244;
+  font-size: 11px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+#wikiPreviewPage.lang-en .wiki-preview-search-button {
+  right: 5.5%;
+}
+
+/* ==================== 文章头图 ==================== */
+
+.wiki-preview-hero {
+  display: none;
+  width: 100%;
+  height: 210px;
+  margin-top: 10px;
+  overflow: hidden;
+  background: #eaecf0;
+}
+
+.wiki-preview-hero.visible {
+  display: block;
+}
+
+.wiki-preview-hero img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+}
+
+/* ==================== 文章主体 ==================== */
+
+.wiki-preview-article {
+  padding: 0 16px 46px;
+  background: #ffffff;
+}
+
+.wiki-preview-header {
+  padding-top: 14px;
+  margin-bottom: 28px;
+}
+
+.wiki-preview-header[hidden] {
+  display: none;
+}
+
+.wiki-preview-title {
+  margin: -3px 0 0;
+  color: #202122;
+  font-family:
+    Georgia,
+    "Times New Roman",
+    "Songti SC",
+    "SimSun",
+    serif;
+  font-size: 18px;
+  font-weight: 450;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.wiki-preview-title:empty {
+  display: none;
+}
+
+.wiki-preview-subtitle {
+  margin-top: 4px;
+  color: #54595d;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.wiki-preview-subtitle:empty {
+  display: none;
+}
+
+.wiki-preview-subtitle:not(:empty)::after {
+  content: "";
+  display: block;
+  width: 62px;
+  height: 1px;
+  margin-top: 11px;
+  background: #c8ccd1;
+}
+
+/* ==================== 消歧义 ==================== */
+
+.wiki-preview-disambiguation {
+  margin: 2px 0 12px;
+  color: #54595d;
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 580;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.wiki-preview-disambiguation[hidden] {
+  display: none;
+}
+
+/* ==================== 正文 ==================== */
+
+.wiki-preview-content {
+  color: #202122;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.wiki-preview-paragraph {
+  margin: 0 0 13px;
+  min-height: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wiki-preview-paragraph:empty {
+  display: none;
+}
+
+.wiki-preview-paragraph b,
+.wiki-preview-paragraph strong {
+  font-weight: 700;
+}
+
+.wiki-preview-paragraph i,
+.wiki-preview-paragraph em {
+  font-style: italic;
+}
+
+.wiki-preview-paragraph u {
+  text-decoration: underline;
+}
+
+.wiki-preview-paragraph s,
+.wiki-preview-paragraph strike,
+.wiki-preview-paragraph del {
+  text-decoration: line-through;
+}
+
+.wiki-preview-paragraph img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  margin: 16px auto;
+  object-fit: contain;
+}
+
+/* 正文里的注释和引用标记 */
+#wikiPreviewPage .wiki-source-token {
+  position: relative;
+  top: -0.18em;
+  margin: 0 1px;
+  color: #3366cc;
+  font-size: 0.72em;
+  font-weight: 500;
+  line-height: 0;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* ==================== 大章节 ==================== */
+
+.wiki-preview-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 24px 0 28px;
+  padding: 0;
+  border: 0;
+  color: #202122;
+  font-family:
+    Georgia,
+    "Times New Roman",
+    "Songti SC",
+    "SimSun",
+    serif;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.wiki-preview-section-title-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.wiki-preview-pencil {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #72777d;
+}
+
+.wiki-preview-pencil svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.wiki-preview-pencil[hidden] {
+  display: none;
+}
+
+/* ==================== 小章节 ==================== */
+
+.wiki-preview-subsection-title {
+  margin: 0 0 14px;
+  color: #202122;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.wiki-preview-section-title +
+.wiki-preview-subsection-title {
+  margin-top: 0;
+}
+
+.wiki-preview-paragraph +
+.wiki-preview-subsection-title {
+  margin-top: 24px;
+}
+
+/* ==================== 参考文献区域 ==================== */
+
+.wiki-preview-references-area {
+  display: none;
+}
+
+.wiki-preview-references-area.visible {
+  display: block;
+}
+
+.wiki-preview-references-main-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 24px 0 28px;
+  color: #202122;
+  font-family:
+    Georgia,
+    "Times New Roman",
+    "Songti SC",
+    "SimSun",
+    serif;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.wiki-preview-source-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 17px 0 15px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #202122;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wiki-preview-source-arrow {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+  transition: transform 0.2s ease;
+}
+
+.wiki-preview-source-toggle.open
+.wiki-preview-source-arrow {
+  transform: rotate(90deg);
+}
+
+.wiki-preview-source-list {
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+  color: #202122;
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.wiki-preview-source-list[hidden] {
+  display: none;
+}
+
+.wiki-preview-source-list li {
+  display: grid;
+  grid-template-columns: 45px minmax(0, 1fr);
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.wiki-preview-source-label {
+  color: #3366cc;
+  font-weight: 450;
+  overflow-wrap: anywhere;
+}
+
+.wiki-preview-source-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ==================== 页脚 ==================== */
+
+.wiki-preview-footer {
+  position: relative;
+  display: none;
+  margin-top: 28px;
+  padding: 10px 16px 28px;
+  background: #ffffff;
+  color: #54595d;
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.wiki-preview-footer.visible {
+  display: block;
+}
+
+.wiki-preview-footer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: #eaecf0;
+}
+
+.wiki-preview-footer-text {
+  margin-bottom: 15px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wiki-preview-footer-text:empty {
+  display: none;
+}
+
+.wiki-preview-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.wiki-preview-footer-links:empty {
+  display: none;
+}
+
+.wiki-preview-footer a {
+  color: #3366cc;
+  text-decoration: none;
+}
+
+/* 英文模式 */
+#wikiPreviewPage.lang-en {
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+#wikiPreviewPage.lang-en .wiki-preview-title,
+#wikiPreviewPage.lang-en .wiki-preview-section-title,
+#wikiPreviewPage.lang-en .wiki-preview-references-main-title {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+/* ==================== 维基百科：普通图片板块编辑器 ==================== */
+
+.wiki-image-editor-preview {
+  display: none;
+  width: 100%;
+  min-height: 120px;
+  max-height: 260px;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid #e8e8e2;
+  background: #f7f7f3;
+  align-items: center;
+  justify-content: center;
+}
+
+.wiki-image-editor-preview.has-image {
+  display: flex;
+}
+
+.wiki-image-editor-preview img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 238px;
+  object-fit: contain;
+}
+
+.wiki-image-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.wiki-image-editor-field label {
+  color: #66675f;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.wiki-image-editor-field input[type="text"],
+.wiki-image-editor-field input[type="url"] {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 11px;
+  border: 1px solid var(--editor-border);
+  border-radius: 0;
+  outline: none;
+  background: #fdfdfb;
+  color: #383834;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.wiki-image-editor-field input:focus {
+  border-color: #777870;
+}
+
+.wiki-image-upload-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.wiki-image-upload-label {
+  min-width: 0;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px dashed #cfcfc8;
+  background: #ffffff;
+  color: #66675f;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.wiki-image-upload-label:active {
+  background: #f1f1ed;
+}
+
+.wiki-image-remove-btn {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #d9bcbc;
+  border-radius: 0;
+  background: #ffffff;
+  color: #9a6262;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wiki-image-remove-btn:active {
+  background: #f7eded;
+}
+
+.wiki-image-width-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 68px;
+  gap: 10px;
+  align-items: center;
+}
+
+.wiki-image-width-range {
+  width: 100%;
+  accent-color: #555650;
+}
+
+.wiki-image-width-number {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 7px;
+  border: 1px solid var(--editor-border);
+  border-radius: 0;
+  outline: none;
+  background: #ffffff;
+  color: #383834;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ==================== 维基预览：普通图片 ==================== */
+
+.wiki-preview-figure {
+  margin: 16px 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+}
+
+.wiki-preview-figure-image-wrap {
+  width: 100%;
+  text-align: center;
+}
+
+.wiki-preview-figure img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  object-fit: contain;
+}
+
+.wiki-preview-figure figcaption {
+  padding: 7px 4px 3px;
+  color: #54595d;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wiki-preview-figure figcaption:empty {
+  display: none;
+}
+
+@media (max-width: 390px) {
+  .wiki-image-upload-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==================================================
+   维基百科：维护提示编辑器
+================================================== */
+
+.wiki-notice-editor-preview {
+  position: relative;
+  min-height: 58px;
+  padding: 11px 12px 11px 66px;
+  overflow: hidden;
+  border: 1px solid #a2a9b1;
+  background: #fafaf9;
+  color: #202122;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    Arial,
+    sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+
+  display: flex;
+  align-items: center;
+}
+
+.wiki-notice-editor-preview::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -1px;
+  width: 10px;
+  background: var(--notice-color, #959392);
+}
+
+.wiki-notice-editor-preview.no-icon {
+  padding-left: 24px;
+}
+
+.wiki-notice-editor-preview-icon {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  transform: translateY(-50%);
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wiki-notice-editor-preview-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.wiki-notice-editor-preview.no-icon
+.wiki-notice-editor-preview-icon {
+  display: none;
+}
+
+.wiki-notice-editor-preview-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wiki-notice-editor-preview-date {
+  margin-left: 5px;
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.wiki-notice-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.wiki-notice-editor-field label {
+  color: #66675f;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.wiki-notice-editor-field input[type="text"],
+.wiki-notice-editor-field input[type="url"],
+.wiki-notice-editor-field textarea,
+.wiki-notice-editor-field select {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 11px;
+  border: 1px solid var(--editor-border);
+  border-radius: 0;
+  outline: none;
+  background: #fdfdfb;
+  color: #383834;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.wiki-notice-editor-field textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.wiki-notice-editor-field input:focus,
+.wiki-notice-editor-field textarea:focus,
+.wiki-notice-editor-field select:focus {
+  border-color: #777870;
+}
+
+.wiki-notice-icon-upload-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.wiki-notice-icon-upload {
+  min-width: 0;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px dashed #cfcfc8;
+  background: #ffffff;
+  color: #66675f;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.wiki-notice-icon-upload:active {
+  background: #f1f1ed;
+}
+
+.wiki-notice-icon-remove {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #d9bcbc;
+  border-radius: 0;
+  background: #ffffff;
+  color: #9a6262;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wiki-notice-icon-remove:active {
+  background: #f7eded;
+}
+
+.wiki-notice-color-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.wiki-notice-color-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.wiki-notice-color-item label {
+  color: #66675f;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.wiki-notice-color-control {
+  min-height: 42px;
+  padding: 5px;
+  border: 1px solid var(--editor-border);
+  background: #ffffff;
+}
+
+.wiki-notice-color-control input[type="color"] {
+  display: block;
+  width: 100%;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* ==================================================
+   维基百科预览：维护提示框
+================================================== */
+
+.wiki-preview-notice {
+  position: relative;
+  min-height: 56px;
+  margin: 13px 0 15px;
+  padding: 10px 11px 10px 67px;
+  border: 1px solid #a2a9b1;
+  background: var(--notice-bg, #fafaf9);
+  color: #202122;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+
+  display: flex;
+  align-items: center;
+}
+
+.wiki-preview-notice::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -1px;
+  width: 10px;
+  background: var(--notice-color, #959392);
+}
+
+.wiki-preview-notice.no-icon {
+  padding-left: 24px;
+}
+
+.wiki-preview-notice-icon {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  transform: translateY(-50%);
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wiki-preview-notice-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.wiki-preview-notice.no-icon
+.wiki-preview-notice-icon {
+  display: none;
+}
+
+.wiki-preview-notice-body {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wiki-preview-notice-date {
+  margin-left: 5px;
+  font-size: 10px;
+  font-style: italic;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+@media (max-width: 390px) {
+  .wiki-notice-icon-upload-row,
+  .wiki-notice-color-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+</style>
+</head>
+<body>
+
+<!-- ==================== 编辑面板 ==================== -->
+<div class="editor-panel">
+
+<div class="editor-header">
+  <img
+    class="editor-banner"
+    src="https://s3.bmp.ovh/2026/09/18/UEKwrBdt.png"
+    alt="板头"
+  >
+</div>
+
+<!-- 编辑分类 -->
+  <div class="editor-section editor-type-section">
+    <div class="editor-section-title">编辑分类</div>
+
+    <div class="editor-type-tabs">
+  <button
+    type="button"
+    class="editor-type-tab active"
+    data-editor-type="tweet"
+  >
+    推文
+  </button>
+
+  <button
+    type="button"
+    class="editor-type-tab"
+    data-editor-type="notes"
+  >
+    备忘录
+  </button>
+
+  <button
+    type="button"
+    class="editor-type-tab"
+    data-editor-type="wiki"
+  >
+    维基百科
+  </button>
+</div>
+  </div>
+
+  <!-- 角色 -->
+  <div class="editor-section character-section">
+    <div class="editor-section-title">角色</div>
+    <div class="char-bar">
+      <select id="charSelect"><option value="__new__">＋ 新角色</option></select>
+      <button class="char-btn" id="btnSaveChar">保存</button>
+      <button class="char-btn char-btn-danger" id="btnDelChar">删除</button>
+    </div>
+    <div class="editor-row">
+      <label>头像</label>
+      <div class="avatar-input-row">
+  <div class="avatar-thumb" id="avatarThumb"></div>
+
+  <input type="hidden" id="editAvatar">
+
+  <label class="avatar-local-upload">
+    <span class="avatar-local-upload-icon">＋</span>
+    <span>选择本地头像</span>
+    <input
+      type="file"
+      accept="image/*"
+      id="editAvatarFile"
+      hidden
+    >
+  </label>
+</div>
+    </div>
+    <div class="editor-row">
+      <label>用户名</label>
+      <input type="text" id="editName" placeholder="显示名称">
+    </div>
+    <div class="editor-row">
+      <label>用户 ID</label>
+      <input type="text" id="editHandle" placeholder="@username">
+    </div>
+    <div class="editor-toggle">
+      <label>蓝V认证</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="editVerified">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- 翻译 -->
+  <div class="editor-section template-x">
+    <div class="editor-section-title">翻译提示</div>
+    <div class="editor-toggle">
+      <label>显示翻译提示</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="editShowTranslate">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="editor-row">
+      <label>翻译源语言</label>
+      <input type="text" id="editTransLang" placeholder="如：英语、日语、韩语">
+    </div>
+    <div class="editor-toggle">
+      <label>显示"评价此翻译"</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="editShowRate">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- 正文 -->
+  <div class="editor-section shared-body-section">
+    <div class="editor-section-title">正文内容</div>
+    <div class="rich-toolbar">
+      <button class="tool-btn" data-cmd="bold" title="粗体"><b>B</b></button>
+      <button class="tool-btn" data-cmd="italic" title="斜体"><i>I</i></button>
+      <button class="tool-btn" data-cmd="underline" title="下划线"><u>U</u></button>
+      <button class="tool-btn" data-cmd="strikeThrough" title="删除线"><s>S</s></button>
+      <span class="tool-sep"></span>
+      <button class="tool-btn" data-cmd="removeFormat" title="清除全部格式">✕</button>
+
+<span class="tool-sep"></span>
+
+<label class="tool-btn" title="插入图片" aria-label="插入图片">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    viewBox="0 0 16 16"
+    aria-hidden="true"
+  >
+    <path d="M0 0h16v16H0z" fill="none" />
+    <g fill="currentColor">
+      <path d="M15 12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h1.172a3 3 0 0 0 2.12-.879l.83-.828A1 1 0 0 1 6.827 3h2.344a1 1 0 0 1 .707.293l.828.828A3 3 0 0 0 12.828 5H14a1 1 0 0 1 1 1zM2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4z" />
+      <path d="M8 11a2.5 2.5 0 1 1 0-5a2.5 2.5 0 0 1 0 5m0 1a3.5 3.5 0 1 0 0-7a3.5 3.5 0 0 0 0 7M3 6.5a.5.5 0 1 1-1 0a.5.5 0 0 1 1 0" />
+    </g>
+  </svg>
+
+  <input
+    type="file"
+    id="editBodyImageFile"
+    accept="image/*"
+    hidden
+  >
+</label>
+
+<button
+  type="button"
+  class="tool-btn"
+  id="btnClearBody"
+  title="清除正文"
+  aria-label="清除正文"
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+  >
+    <path d="M0 0h24v24H0z" fill="none" />
+    <path fill="currentColor" d="M20.3 13.43a1 1 0 0 0-1.25.65A7.14 7.14 0 0 1 12.18 19A7.1 7.1 0 0 1 5 12a7.1 7.1 0 0 1 7.18-7a7.26 7.26 0 0 1 4.65 1.67l-2.17-.36a1 1 0 0 0-1.15.83a1 1 0 0 0 .83 1.15l4.24.7h.17a1 1 0 0 0 .34-.06a.3.3 0 0 0 .1-.06a.8.8 0 0 0 .2-.11l.09-.11c0-.05.09-.09.13-.15s0-.1.05-.14a1.3 1.3 0 0 0 .07-.18l.75-4a1 1 0 0 0-2-.38l-.27 1.45A9.2 9.2 0 0 0 12.18 3A9.1 9.1 0 0 0 3 12a9.1 9.1 0 0 0 9.18 9A9.12 9.12 0 0 0 21 14.68a1 1 0 0 0-.7-1.25" />
+  </svg>
+</button>
+
+    </div>
+    <div class="hl-bar">
+      <span class="hl-label">马克笔</span>
+<button
+  class="hl-dot"
+  data-bg="rgba(148, 163, 184, 0.22)"
+  data-text="#64748b"
+  style="background:#cbd5e1"
+  title="灰"
+></button>
+
+<button
+  class="hl-dot"
+  data-bg="rgba(190, 130, 130, 0.18)"
+  data-text="#a35f63"
+  style="background:#e8cccc"
+  title="豆沙"
+></button>
+
+<button
+  class="hl-dot"
+  data-bg="rgba(177, 164, 132, 0.18)"
+  data-text="#8f7f59"
+  style="background:#e9e2d2"
+  title="米灰"
+></button>
+
+<button
+  class="hl-dot"
+  data-bg="rgba(74, 190, 174, 0.18)"
+  data-text="#36aaa0"
+  style="background:#cceee9"
+  title="青绿"
+></button>
+
+<button
+  class="hl-dot"
+  data-bg="rgba(92, 160, 205, 0.17)"
+  data-text="#438dbb"
+  style="background:#d5e9f5"
+  title="蓝"
+></button>
+
+<button
+  class="hl-dot"
+  data-bg="rgba(235, 154, 74, 0.20)"
+  data-text="#d67f2c"
+  style="background:#f8d8b8"
+  title="橙"
+></button>
+
+<button
+  class="hl-dot"
+  data-bg="rgba(224, 112, 158, 0.17)"
+  data-text="#cf6692"
+  style="background:#f6d3e2"
+  title="粉"
+></button>
+
+<button
+  class="hl-dot"
+  data-bg="rgba(147, 5, 16, 0.18)"
+  data-text="#930510"
+  style="background:#930510"
+  title="红"
+></button>
+
+<button
+  class="hl-dot"
+  data-bg="rgba(105, 105, 114, 0.20)"
+  data-text="#696972"
+  style="background:#696972"
+  title="深灰"
+></button>
+
+<button
+  class="hl-dot"
+  data-bg="rgba(201, 210, 203, 0.50)"
+  data-text="#66736a"
+  style="background:#c9d2cb"
+  title="淡绿"
+></button>
+
+<button type="button"
+  class="hl-dot hl-dot-clear"
+  data-color=""
+  title="取消高亮"
+  aria-label="取消高亮">✕</button>
+
+    </div>
+    <p style="font-size:11px;color:var(--text-secondary);line-height:1.5;padding:0 2px;">
+      在下方编辑框中<b>选中文字</b>，再点击工具栏按钮或马克笔颜色即可。
+    </p>
+    <div class="rich-editor is-empty" id="richEditor" contenteditable="true" data-placeholder="在这里输入正文……"></div>
+
+<div class="editor-row">
+  <label for="editFontFamily">正文字体</label>
+  <select id="editFontFamily">
+    <option value="">系统默认</option>
+  </select>
+</div>
+
+<div class="editor-inline">
+  <div class="editor-row">
+    <label>字号</label>
+    <input
+      type="number"
+      id="editFontSize"
+      value="16"
+      min="12"
+      max="24"
+      step="0.5"
+    >
+  </div>
+
+  <div class="editor-row">
+    <label>行高</label>
+    <input
+      type="number"
+      id="editLineHeight"
+      value="1.55"
+      min="1"
+      max="3"
+      step="0.05"
+    >
+  </div>
+
+  <div class="editor-row">
+    <label>字重</label>
+    <input
+      type="number"
+      id="editFontWeight"
+      value="580"
+      min="300"
+      max="900"
+      step="10"
+    >
+  </div>
+</div>
+
+<div class="editor-toggle">
+  <label for="editBold">全局加粗</label>
+  <label class="toggle-switch">
+    <input type="checkbox" id="editBold">
+    <span class="toggle-slider"></span>
+  </label>
+</div>
+
+<div class="editor-toggle">
+  <label for="editIndent">首行缩进（每段前空两格）</label>
+  <label class="toggle-switch">
+    <input type="checkbox" id="editIndent">
+    <span class="toggle-slider"></span>
+  </label>
+</div>
+
+<div class="editor-toggle wiki-hide-setting">
+  <label for="editDarkMode">深色模式</label>
+  <label class="toggle-switch">
+    <input type="checkbox" id="editDarkMode">
+    <span class="toggle-slider"></span>
+  </label>
+</div>
+    </div>
+
+<!-- 备忘录设置 -->
+  <div class="editor-section notes-only-section">
+    <div class="editor-section-title">备忘录设置</div>
+
+    <div class="editor-row">
+      <label for="editNotesFolder">文件夹名称</label>
+      <input
+        type="text"
+        id="editNotesFolder"
+        value="备忘录"
+        placeholder="例如：备忘录"
+      >
+    </div>
+
+    <div class="editor-row">
+      <label for="editNotesTitle">备忘录标题</label>
+      <input
+        type="text"
+        id="editNotesTitle"
+        placeholder="可以留空"
+      >
+    </div>
+
+    <div class="editor-toggle">
+      <label for="editNotesShowDate">显示日期和时间</label>
+
+      <label class="toggle-switch">
+        <input
+          type="checkbox"
+          id="editNotesShowDate"
+          checked
+        >
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+
+  </div>
+
+<!-- 维基百科设置 -->
+<div class="editor-section wiki-only-section">
+  <div class="editor-section-title">维基百科设置</div>
+
+  <div class="editor-row">
+    <label for="editWikiLanguage">页面语言</label>
+
+    <select id="editWikiLanguage">
+      <option value="zh">中文</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+
+  <div class="editor-row">
+    <label for="editWikiTitle">文章标题</label>
+
+    <input
+      type="text"
+      id="editWikiTitle"
+      placeholder="例如：兔"
+    >
+  </div>
+
+  <div class="editor-row">
+    <label for="editWikiSubtitle">标题说明</label>
+
+    <input
+      type="text"
+      id="editWikiSubtitle"
+      placeholder="例如：兔形目的一科哺乳动物"
+    >
+  </div>
+
+  <div class="editor-row">
+    <label for="editWikiDisambiguation">消歧义提示</label>
+
+    <input
+      type="text"
+      id="editWikiDisambiguation"
+      placeholder="例如：关于与「兔」标题相近或相同的条目……"
+    >
+  </div>
+
+  <div class="editor-toggle">
+    <label for="editWikiShowDisambiguation">
+      显示消歧义提示
+    </label>
+
+    <label class="toggle-switch">
+      <input
+        type="checkbox"
+        id="editWikiShowDisambiguation"
+        checked
+      >
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
+  <div class="editor-toggle">
+    <label for="editWikiShowPencil">
+      显示编辑铅笔
+    </label>
+
+    <label class="toggle-switch">
+      <input
+        type="checkbox"
+        id="editWikiShowPencil"
+        checked
+      >
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+<div class="editor-row">
+  <label for="editWikiFooter">
+    页面底部说明
+  </label>
+
+  <input
+    type="text"
+    id="editWikiFooter"
+    placeholder="留空时不显示页面底部"
+  >
+</div>
+
+<div class="editor-row">
+  <label for="editWikiPrivacyText">
+    第一个底部链接
+  </label>
+
+  <input
+    type="text"
+    id="editWikiPrivacyText"
+    placeholder="例如：隐私政策；留空则隐藏"
+  >
+</div>
+
+<div class="editor-row">
+  <label for="editWikiAboutText">
+    第二个底部链接
+  </label>
+
+  <input
+    type="text"
+    id="editWikiAboutText"
+    placeholder="例如：关于维基百科；留空则隐藏"
+  >
+</div>
+
+<div class="editor-row">
+  <label for="editWikiDisclaimerText">
+    第三个底部链接
+  </label>
+
+  <input
+    type="text"
+    id="editWikiDisclaimerText"
+    placeholder="例如：免责声明；留空则隐藏"
+  >
+</div>
+
+</div>
+
+<!-- 维基百科头图 -->
+<div class="editor-section wiki-only-section">
+  <div class="editor-section-title">文章头图</div>
+
+  <div class="editor-row">
+    <label>头图图片</label>
+
+    <div class="wiki-cover-upload-row">
+      <div
+        class="wiki-cover-thumb"
+        id="wikiCoverThumb"
+      ></div>
+
+      <input
+        type="hidden"
+        id="editWikiCover"
+      >
+
+      <label class="wiki-cover-upload">
+        <span class="wiki-cover-upload-icon">＋</span>
+        <span>选择本地头图</span>
+
+        <input
+          type="file"
+          id="editWikiCoverFile"
+          accept="image/*"
+          hidden
+        >
+      </label>
+    </div>
+  </div>
+
+  <button
+    type="button"
+    class="wiki-remove-cover-btn"
+    id="btnRemoveWikiCover"
+  >
+    移除头图
+  </button>
+</div>
+
+<!-- 维基百科自由文章板块 -->
+<div class="editor-section wiki-only-section">
+  <div class="editor-section-title">文章板块</div>
+
+  <p class="wiki-editor-hint">
+    按照文章顺序自由添加。没有添加任何板块时，预览区域保持空白。
+  </p>
+
+  <div class="wiki-block-create-buttons">
+    <button
+      type="button"
+      class="wiki-block-create-btn"
+      id="btnAddWikiParagraph"
+    >
+      ＋ 普通正文
+    </button>
+
+    <button
+      type="button"
+      class="wiki-block-create-btn"
+      id="btnAddWikiSection"
+    >
+      ＋ 大章节
+    </button>
+
+    <button
+      type="button"
+      class="wiki-block-create-btn"
+      id="btnAddWikiSubsection"
+    >
+      ＋ 小章节
+    </button>
+
+<button
+      type="button"
+      class="wiki-block-create-btn"
+      id="btnAddWikiImage"
+    >
+      ＋ 普通图片
+    </button>
+
+<button
+  type="button"
+  class="wiki-block-create-btn"
+  id="btnAddWikiNotice"
+>
+  ＋ 维护提示
+</button>
+  </div>
+
+<p class="wiki-block-small-hint">
+    所有板块都可以自由排序。没有上传图片的图片板块不会出现在预览中。
+  </p>
+
+  <div
+    class="wiki-block-list"
+    id="wikiBlockEditorList"
+  ></div>
+</div>
+
+<!-- 维基百科注释与引用 -->
+<div class="editor-section wiki-only-section">
+  <div class="editor-section-title">注释与引用</div>
+
+  <p class="wiki-editor-hint">
+    标记文字完全自由，可以填写［注 1］、［兔兔］、※、①等内容。
+    没有添加项目时，维基预览不会显示对应板块。
+  </p>
+
+  <!-- 新建区域 -->
+  <div class="wiki-source-create">
+
+    <div class="wiki-source-type-tabs">
+      <button
+        type="button"
+        class="wiki-source-type-btn active"
+        id="wikiSourceTypeNote"
+        data-source-type="note"
+      >
+        添加到注释
+      </button>
+
+      <button
+        type="button"
+        class="wiki-source-type-btn"
+        id="wikiSourceTypeReference"
+        data-source-type="reference"
+      >
+        添加到引用
+      </button>
+    </div>
+
+    <div class="wiki-source-field">
+      <label for="editWikiSourceLabel">
+        正文标记
+      </label>
+
+      <input
+  type="text"
+  id="editWikiSourceLabel"
+  placeholder="例如：输入兔兔，会自动变成［兔兔］"
+>
+    </div>
+
+<div class="editor-toggle">
+  <label for="editWikiAutoWrapSourceLabel">
+    自动添加［］
+  </label>
+
+  <label class="toggle-switch">
+    <input
+      type="checkbox"
+      id="editWikiAutoWrapSourceLabel"
+      checked
+    >
+    <span class="toggle-slider"></span>
+  </label>
+</div>
+
+<p class="wiki-editor-hint">
+  开启时只需输入“兔兔”，添加后会自动变成“［兔兔］”。
+  关闭后将完全保留原本输入的标记。
+</p>
+
+    <div class="wiki-source-field">
+      <label for="editWikiSourceContent">
+        注释或引用的详细内容
+      </label>
+
+      <textarea
+  id="editWikiSourceContent"
+  placeholder="可以留空，也可以填写文章末尾要显示的说明内容"
+></textarea>
+    </div>
+
+    <button
+      type="button"
+      class="wiki-add-source-btn"
+      id="btnAddWikiSource"
+    >
+      ＋ 添加注释
+    </button>
+  </div>
+
+  <!-- 已添加内容 -->
+  <div class="wiki-source-groups">
+
+    <div class="wiki-source-group">
+      <div class="wiki-source-group-title">
+        <span>注释</span>
+
+        <span
+          class="wiki-source-count"
+          id="wikiNoteCount"
+        >
+          0 项
+        </span>
+      </div>
+
+      <div
+        class="wiki-source-list"
+        id="wikiNoteEditorList"
+      ></div>
+    </div>
+
+    <div class="wiki-source-group">
+      <div class="wiki-source-group-title">
+        <span>引用</span>
+
+        <span
+          class="wiki-source-count"
+          id="wikiReferenceCount"
+        >
+          0 项
+        </span>
+      </div>
+
+      <div
+        class="wiki-source-list"
+        id="wikiReferenceEditorList"
+      ></div>
+    </div>
+
+  </div>
+</div>
+
+  <!-- 互动 -->
+  <div class="editor-section template-x">
+    <div class="editor-section-title">互动数据</div>
+
+<button type="button" class="roll-data-btn" id="btnRollData">
+  ROLL 互动数据
+</button>
+
+    <div class="editor-inline">
+      <div class="editor-row"><label>回复</label><input type="text" id="editReply" placeholder="0"></div>
+      <div class="editor-row"><label>转发</label><input type="text" id="editRetweet" placeholder="0"></div>
+    </div>
+    <div class="editor-inline">
+      <div class="editor-row"><label>点赞</label><input type="text" id="editLike" placeholder="0"></div>
+      <div class="editor-row"><label>书签</label><input type="text" id="editBookmark" placeholder="0"></div>
+    </div>
+  </div>
+
+  <!-- 时间 -->
+  <div class="editor-section template-x">
+    <div class="editor-section-title">时间与浏览</div>
+    <div class="editor-toggle">
+      <label>自动同步当前时间</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="editTimeSync" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="editor-inline">
+      <div class="editor-row"><label>时间</label><input type="text" id="editTime" placeholder="00:00" readonly></div>
+      <div class="editor-row"><label>日期</label><input type="text" id="editDate" placeholder="2026/1/1" readonly></div>
+    </div>
+    <div class="editor-row">
+      <label>浏览量</label>
+      <input type="text" id="editViews" placeholder="0">
+    </div>
+  </div>
+
+  <!-- 页面设置 -->
+  <div class="editor-section">
+    <div class="editor-section-title">页面设置</div>
+
+<div class="editor-row tweet-only-setting">
+  <label for="editReplyText">底部回复文字</label>
+  <input
+    type="text"
+    id="editReplyText"
+    value="发布你的回复"
+    placeholder="留空时显示：发布你的回复"
+  >
+</div>
+
+<div class="editor-row">
+      <label for="editHeightMode">截图范围</label>
+      <select id="editHeightMode">
+        <option value="fixed">自定义高度</option>
+        <option value="auto">完整长图</option>
+      </select>
+    </div>
+
+    <div class="editor-row" id="pageHeightRow">
+      <label for="editPageHeight">页面高度（px）</label>
+      <input
+        type="number"
+        id="editPageHeight"
+        value="600"
+        min="300"
+        max="3000"
+        step="10"
+      >
+    </div>
+  </div>
+</div>
+
+<!-- 浮动预览 -->
+<button class="floating-preview-btn" id="btnEnterPreview">预览</button>
+
+<!-- ==================== 推文预览页 ==================== -->
+<div id="tweetPage">
+  <div class="top-nav-wrapper">
+    <div class="top-nav-bar">
+      <img class="top-nav-img" src="https://s3.bmp.ovh/2026/09/17/pgovDC0P.jpg" alt="">
+      <span class="top-nav-title">帖子</span>
+      <span class="top-nav-grok">
+        <svg viewBox="0 0 1024 1024"><path d="M395.479 633.828L735.91 381.105C752.599 368.715 776.454 373.548 784.406 392.792C826.26 494.285 807.561 616.253 724.288 699.996C641.016 783.739 525.151 802.104 419.247 760.277L303.556 814.143C469.49 928.202 670.987 899.995 796.901 773.282C896.776 672.843 927.708 535.937 898.785 412.476L899.047 412.739C857.105 231.37 909.358 158.874 1016.4 10.6326C1018.93 7.11771 1021.47 3.60279 1024 0L883.144 141.651V141.212L395.392 633.916"/><path d="M325.226 695.251C206.128 580.84 226.662 403.776 328.285 301.668C403.431 226.097 526.549 195.254 634.026 240.596L749.454 186.994C728.657 171.88 702.007 155.623 671.424 144.2C533.19 86.9942 367.693 115.465 255.323 228.382C147.234 337.081 113.244 504.215 171.613 646.833C215.216 753.423 143.739 828.818 71.7385 904.916C46.2237 931.893 20.6216 958.87 0 987.429L325.139 695.339"/></svg>
+      </span>
+    </div>
+  </div>
+
+  <div class="scroll-content">
+    <article class="tweet-card">
+      <div class="tweet-header">
+        <div class="tweet-avatar">
+          <img id="previewAvatar" src="about:blank" alt="">
+        </div>
+        <div class="tweet-user-info">
+          <div class="tweet-display-name">
+            <span id="previewName"></span>
+            <span class="tweet-verified" id="previewVerified" style="display:none">
+              <svg viewBox="0 0 22 22"><path fill="#1D9BF0" d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.855-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.69-.13.636-.08 1.297.144 1.907-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.61-.273 1.271-.144 1.907.13.635.433 1.22.878 1.69.47.446 1.055.752 1.69.882.635.132 1.294.083 1.902-.14.272.587.702 1.087 1.24 1.44s1.167.551 1.813.568c.647-.017 1.277-.213 1.817-.568s.972-.854 1.245-1.44c.604.223 1.262.272 1.894.14.634-.13 1.22-.436 1.69-.882.445-.47.749-1.055.878-1.69.13-.636.08-1.297-.144-1.908.588-.273 1.088-.704 1.444-1.244.354-.543.551-1.174.569-1.82ZM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246-5.683 6.206Z"/></svg>
+            </span>
+          </div>
+          <div class="tweet-handle" id="previewHandle"></div>
+        </div>
+<div class="tweet-header-action">
+          <img
+            class="tweet-header-action-img"
+            src="https://s3.bmp.ovh/2026/09/17/NdHwyfz7.jpg"
+            alt=""
+          >
+          <span class="subscribe-label">订阅</span>
+        </div>
+      </div>
+
+      <div class="tweet-translate-hint" id="previewTranslateHint">
+        <span class="tweet-translate-hint-icon">
+          <svg viewBox="0 0 1024 1024"><path d="M395.479 633.828L735.91 381.105C752.599 368.715 776.454 373.548 784.406 392.792C826.26 494.285 807.561 616.253 724.288 699.996C641.016 783.739 525.151 802.104 419.247 760.277L303.556 814.143C469.49 928.202 670.987 899.995 796.901 773.282C896.776 672.843 927.708 535.937 898.785 412.476L899.047 412.739C857.105 231.37 909.358 158.874 1016.4 10.6326C1018.93 7.11771 1021.47 3.60279 1024 0L883.144 141.651V141.212L395.392 633.916"/><path d="M325.226 695.251C206.128 580.84 226.662 403.776 328.285 301.668C403.431 226.097 526.549 195.254 634.026 240.596L749.454 186.994C728.657 171.88 702.007 155.623 671.424 144.2C533.19 86.9942 367.693 115.465 255.323 228.382C147.234 337.081 113.244 504.215 171.613 646.833C215.216 753.423 143.739 828.818 71.7385 904.916C46.2237 931.893 20.6216 958.87 0 987.429L325.139 695.339"/></svg>
+        </span>
+        <span id="previewTransLang"></span>
+      </div>
+
+      <div class="tweet-body" id="previewBody"></div>
+
+      <div class="tweet-rate-translation" id="previewRate">
+        评价此翻译：
+        <img class="tweet-rate-icon theme-img"
+          data-light-src="https://s3.bmp.ovh/2026/08/27/kSa6IGly.jpg"
+          data-dark-src="https://s3.bmp.ovh/2026/08/28/OuwPQhzy.jpg"
+          src="https://s3.bmp.ovh/2026/08/27/kSa6IGly.jpg" alt="">
+      </div>
+
+      <div class="tweet-meta">
+        <span id="previewTime"></span> · <span id="previewDate"></span> ·
+        <span class="tweet-meta-views" id="previewViews"></span> 次查看
+      </div>
+
+      <div class="tweet-actions-bar">
+        <img class="tweet-actions-img"
+          data-light-src="https://s3.bmp.ovh/2026/07/01/w6x9UB9d.png"
+          data-dark-src="https://s3.bmp.ovh/2026/07/01/u5UTX6B5.png"
+          src="https://s3.bmp.ovh/2026/07/01/w6x9UB9d.png" alt="">
+        <div class="tweet-actions-numbers">
+          <span class="action-count action-count-reply" id="previewReply"></span>
+          <span class="action-count action-count-retweet" id="previewRetweet"></span>
+          <span class="action-count action-count-like" id="previewLike"></span>
+          <span class="action-count action-count-bookmark" id="previewBookmark"></span>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <div class="bottom-tab-bar">
+  <div class="bottom-reply-wrap">
+    <img class="bottom-tab-img theme-img"
+      data-light-src="https://s3.bmp.ovh/2026/09/17/2qHwT7sv.jpg"      data-dark-src="https://s3.bmp.ovh/2026/09/17/Fi8uWQIC.jpg"
+      src="https://s3.bmp.ovh/2026/09/17/2qHwT7sv.jpg" alt="">
+<span class="bottom-reply-label" id="previewReplyText">发布你的回复</span>
+  </div>
+  </div>
+</div>
+
+<!-- ==================== 原版备忘录预览页 ==================== -->
+<div id="notesPage">
+  <div class="notes-wrapper">
+    <div class="phone-container">
+
+      <!-- 原版图片顶栏 -->
+      <div class="notes-original-top-bar">
+        <div class="notes-original-top-inner">
+          <img
+            class="notes-theme-img notes-light-img"
+            id="notesTopLight"
+            src="https://s3.bmp.ovh/2026/06/29/P6n7FTlI.png"
+            alt=""
+          >
+
+          <img
+            class="notes-theme-img notes-dark-img"
+            id="notesTopDark"
+            src="https://s3.bmp.ovh/2026/06/29/ufY4vl9x.png"
+            alt=""
+          >
+
+          <span
+            class="notes-original-folder"
+            id="previewNotesFolder"
+          >
+            备忘录
+          </span>
+        </div>
+      </div>
+
+      <!-- 中间自由文字区 -->
+      <main class="notes-original-editor">
+        <div
+          class="notes-original-date"
+          id="previewNotesDate"
+        ></div>
+
+        <h1
+          class="notes-original-title"
+          id="previewNotesTitle"
+        ></h1>
+
+        <div
+          class="notes-original-body"
+          id="previewNotesBody"
+        ></div>
+      </main>
+
+      <!-- 原版图片底栏 -->
+      <div class="notes-original-bottom-bar">
+        <img
+          class="notes-theme-img notes-light-img"
+          id="notesBottomLight"
+          src="https://s3.bmp.ovh/2026/06/29/wlHMdp4T.png"
+          alt=""
+        >
+
+        <img
+          class="notes-theme-img notes-dark-img"
+          id="notesBottomDark"
+          src="https://s3.bmp.ovh/2026/06/29/P1QCUnKR.png"
+          alt=""
+        >
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 维基百科预览页 ==================== -->
+
+<div id="wikiPreviewPage">
+
+  <!-- 顶栏 -->
+  <header class="wiki-preview-topbar">
+    <img
+      id="wikiPreviewTopImage"
+      src="https://s3.bmp.ovh/2026/09/27/PSyAHdkk.jpg"
+      alt="Wikipedia"
+    >
+
+    <div class="wiki-preview-search-layer">
+      <span
+        class="wiki-preview-search-placeholder"
+        id="wikiPreviewSearchPlaceholder"
+      >
+        搜索维基百科
+      </span>
+
+      <span
+        class="wiki-preview-search-button"
+        id="wikiPreviewSearchButton"
+      >
+        搜索
+      </span>
+    </div>
+  </header>
+
+  <!-- 文章头图；没有上传时自动隐藏 -->
+  <section
+    class="wiki-preview-hero"
+    id="wikiPreviewHero"
+  >
+    <img
+      id="wikiPreviewHeroImage"
+      src=""
+      alt=""
+    >
+  </section>
+
+  <!-- 文章 -->
+  <article class="wiki-preview-article">
+
+    <header
+      class="wiki-preview-header"
+      id="wikiPreviewHeader"
+      hidden
+    >
+      <h1
+        class="wiki-preview-title"
+        id="wikiPreviewTitle"
+      ></h1>
+
+      <div
+        class="wiki-preview-subtitle"
+        id="wikiPreviewSubtitle"
+      ></div>
+    </header>
+
+    <div class="wiki-preview-content">
+
+      <p
+        class="wiki-preview-disambiguation"
+        id="wikiPreviewDisambiguation"
+        hidden
+      ></p>
+
+      <!-- 自由文章板块会生成到这里 -->
+      <div id="wikiPreviewBlocks"></div>
+
+      <!-- 注释与引用 -->
+      <section
+        class="wiki-preview-references-area"
+        id="wikiPreviewReferencesArea"
+      >
+        <h2 class="wiki-preview-references-main-title">
+          <span id="wikiPreviewReferencesTitle">
+            参考文献
+          </span>
+
+          <span
+            class="wiki-preview-pencil"
+            id="wikiPreviewReferencesPencil"
+            aria-hidden="true"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 512 512"
+            >
+              <path
+                fill="currentColor"
+                d="m362.7 19.3-48.4 48.4 130 130 48.4-48.4c25-25 25-65.5 0-90.5l-39.4-39.5c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18 23.3-22.2 37.4L1 481.2c-2.5 8.5-.2 17.6 6 23.8s15.3 8.5 23.7 6.1L151 475.7c14.1-4.2 27-11.8 37.4-22.2l233.3-233.2z"
+              />
+            </svg>
+          </span>
+        </h2>
+
+        <!-- 注释 -->
+        <div id="wikiPreviewNotesGroup">
+          <button
+            type="button"
+            class="wiki-preview-source-toggle"
+            id="wikiPreviewNotesButton"
+            aria-expanded="false"
+          >
+            <svg
+              class="wiki-preview-source-arrow"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m15 18-6-6 6-6"></path>
+            </svg>
+
+            <span id="wikiPreviewNotesLabel">注释</span>
+          </button>
+
+          <ol
+            class="wiki-preview-source-list"
+            id="wikiPreviewNotesList"
+            hidden
+          ></ol>
+        </div>
+
+        <!-- 引用 -->
+        <div id="wikiPreviewReferencesGroup">
+          <button
+            type="button"
+            class="wiki-preview-source-toggle"
+            id="wikiPreviewReferencesButton"
+            aria-expanded="false"
+          >
+            <svg
+              class="wiki-preview-source-arrow"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m15 18-6-6 6-6"></path>
+            </svg>
+
+            <span id="wikiPreviewReferencesLabel">引用</span>
+          </button>
+
+          <ol
+            class="wiki-preview-source-list"
+            id="wikiPreviewReferencesList"
+            hidden
+          ></ol>
+        </div>
+      </section>
+
+    </div>
+  </article>
+
+  <!-- 页脚；全部留空时自动隐藏 -->
+  <footer
+    class="wiki-preview-footer"
+    id="wikiPreviewFooter"
+  >
+    <p
+      class="wiki-preview-footer-text"
+      id="wikiPreviewFooterText"
+    ></p>
+
+    <p
+      class="wiki-preview-footer-links"
+      id="wikiPreviewFooterLinks"
+    ></p>
+  </footer>
+
+</div>
+
+<!-- 预览底部按钮 -->
+<div class="preview-actions" id="previewActions">
+  <button class="preview-action-btn" id="btnBackEdit">← 返回编辑</button>
+</div>
+
+<!-- 图片大小设置弹窗 -->
+<div class="image-size-modal" id="imageSizeModal" aria-hidden="true">
+  <button
+    type="button"
+    class="image-size-modal-overlay"
+    id="imageSizeModalOverlay"
+    aria-label="关闭图片设置"
+  ></button>
+
+  <div
+    class="image-size-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="imageSizeModalTitle"
+  >
+    <div class="image-size-dialog-header">
+      <h3 id="imageSizeModalTitle">图片设置</h3>
+
+      <button
+        type="button"
+        class="image-size-close"
+        id="imageSizeClose"
+        aria-label="关闭"
+      >
+        ✕
+      </button>
+    </div>
+
+    <div class="image-size-preview">
+      <img id="imageSizePreview" src="" alt="图片预览">
+    </div>
+
+    <div class="image-size-control">
+      <div class="image-size-control-header">
+        <label for="imageSizeRange">图片宽度</label>
+
+        <div class="image-size-number-wrap">
+          <input
+            type="number"
+            id="imageSizeNumber"
+            min="10"
+            max="100"
+            step="1"
+            inputmode="numeric"
+          >
+          <span>%</span>
+        </div>
+      </div>
+
+      <input
+        type="range"
+        id="imageSizeRange"
+        min="10"
+        max="100"
+        step="1"
+      >
+    </div>
+
+    <div class="image-size-dialog-actions">
+      <button
+        type="button"
+        class="image-size-btn image-size-btn-delete"
+        id="imageSizeDelete"
+      >
+        删除图片
+      </button>
+
+      <div class="image-size-main-actions">
+        <button
+          type="button"
+          class="image-size-btn"
+          id="imageSizeCancel"
+        >
+          取消
+        </button>
+
+        <button
+          type="button"
+          class="image-size-btn image-size-btn-apply"
+          id="imageSizeApply"
+        >
+          应用
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+
+<script>
+(function(){
+
+
+var STORE_KEY='beautyEditor';
+function loadStore(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{}}catch(e){return{}}}
+function saveStore(d){
+  try{
+    localStorage.setItem(STORE_KEY,JSON.stringify(d));
+    return true;
+  }catch(error){
+    console.warn('草稿保存失败：',error);
+
+    if(typeof showToast==='function'){
+      showToast('草稿太大，暂时无法保存');
+    }
+
+    return false;
+  }
+}
+function genId(){return 'c_'+Date.now()+'_'+Math.random().toString(36).substr(2,5)}
+
+var $=function(id){return document.getElementById(id)};
+
+/* ==================== 推文 / 备忘录分类 ==================== */
+var editorType='tweet';
+
+var editorTypeTabs=document.querySelectorAll('.editor-type-tab');
+
+var notesPage=$('notesPage');
+var editNotesFolder=$('editNotesFolder');
+var editNotesTitle=$('editNotesTitle');
+var editNotesShowDate=$('editNotesShowDate');
+
+/* 维基百科编辑字段 */
+var editWikiLanguage=$('editWikiLanguage');
+var editWikiTitle=$('editWikiTitle');
+var editWikiSubtitle=$('editWikiSubtitle');
+var editWikiDisambiguation=$('editWikiDisambiguation');
+var editWikiShowDisambiguation=$('editWikiShowDisambiguation');
+var editWikiShowPencil=$('editWikiShowPencil');
+var editWikiFooter=$('editWikiFooter');
+var editWikiPrivacyText=$('editWikiPrivacyText');
+var editWikiAboutText=$('editWikiAboutText');
+var editWikiDisclaimerText=$('editWikiDisclaimerText');
+
+var wikiPreviewPage=$('wikiPreviewPage');
+var wikiPreviewTopImage=$('wikiPreviewTopImage');
+var wikiPreviewSearchPlaceholder=$(
+  'wikiPreviewSearchPlaceholder'
+);
+var wikiPreviewSearchButton=$(
+  'wikiPreviewSearchButton'
+);
+
+var wikiPreviewHero=$('wikiPreviewHero');
+var wikiPreviewHeroImage=$('wikiPreviewHeroImage');
+
+var wikiPreviewHeader=$('wikiPreviewHeader');
+var wikiPreviewTitle=$('wikiPreviewTitle');
+var wikiPreviewSubtitle=$('wikiPreviewSubtitle');
+var wikiPreviewDisambiguation=$(
+  'wikiPreviewDisambiguation'
+);
+
+var wikiPreviewBlocks=$('wikiPreviewBlocks');
+
+var wikiPreviewReferencesArea=$(
+  'wikiPreviewReferencesArea'
+);
+var wikiPreviewReferencesTitle=$(
+  'wikiPreviewReferencesTitle'
+);
+var wikiPreviewReferencesPencil=$(
+  'wikiPreviewReferencesPencil'
+);
+
+var wikiPreviewNotesGroup=$('wikiPreviewNotesGroup');
+var wikiPreviewNotesButton=$('wikiPreviewNotesButton');
+var wikiPreviewNotesLabel=$('wikiPreviewNotesLabel');
+var wikiPreviewNotesList=$('wikiPreviewNotesList');
+
+var wikiPreviewReferencesGroup=$(
+  'wikiPreviewReferencesGroup'
+);
+var wikiPreviewReferencesButton=$(
+  'wikiPreviewReferencesButton'
+);
+var wikiPreviewReferencesLabel=$(
+  'wikiPreviewReferencesLabel'
+);
+var wikiPreviewReferencesList=$(
+  'wikiPreviewReferencesList'
+);
+
+var wikiPreviewFooter=$('wikiPreviewFooter');
+var wikiPreviewFooterText=$('wikiPreviewFooterText');
+var wikiPreviewFooterLinks=$('wikiPreviewFooterLinks');
+
+var editWikiCover=$('editWikiCover');
+var editWikiCoverFile=$('editWikiCoverFile');
+var wikiCoverThumb=$('wikiCoverThumb');
+var btnRemoveWikiCover=$('btnRemoveWikiCover');
+
+/* ==================== 维基百科注释与引用数据 ==================== */
+
+/*
+ * 每一项的数据格式：
+ *
+ * {
+ *   id: 唯一编号,
+ *   type: note 或 reference,
+ *   label: 正文显示的标记，例如［兔兔］,
+ *   content: 文章末尾显示的详细内容
+ * }
+ *
+ * 默认数组为空，因此不会显示任何示例内容。
+ */
+
+/* ==================== 维基百科自由文章板块数据 ==================== */
+
+/*
+ * 文章默认没有任何内容。
+ *
+ * paragraph  = 普通正文
+ * section    = 大章节
+ * subsection = 小章节
+ */
+var wikiArticleBlocks=[];
+
+var wikiBlockEditorList=$('wikiBlockEditorList');
+
+var btnAddWikiParagraph=$('btnAddWikiParagraph');
+var btnAddWikiSection=$('btnAddWikiSection');
+var btnAddWikiSubsection=$('btnAddWikiSubsection');
+var btnAddWikiImage=$('btnAddWikiImage');
+var btnAddWikiNotice=$('btnAddWikiNotice');
+var wikiSourceItems=[];
+
+var wikiSourceDraftType='note';
+
+var wikiSourceTypeNote=$('wikiSourceTypeNote');
+var wikiSourceTypeReference=$('wikiSourceTypeReference');
+
+var editWikiSourceLabel=$('editWikiSourceLabel');
+var editWikiSourceContent=$('editWikiSourceContent');
+
+var editWikiAutoWrapSourceLabel=$(
+  'editWikiAutoWrapSourceLabel'
+);
+
+var btnAddWikiSource=$('btnAddWikiSource');
+
+var wikiNoteEditorList=$('wikiNoteEditorList');
+var wikiReferenceEditorList=$('wikiReferenceEditorList');
+
+var wikiNoteCount=$('wikiNoteCount');
+var wikiReferenceCount=$('wikiReferenceCount');
+
+var previewNotesFolder=$('previewNotesFolder');
+var previewNotesTitle=$('previewNotesTitle');
+var previewNotesDate=$('previewNotesDate');
+var previewNotesBody=$('previewNotesBody');
+
+function getActivePage(){
+  if(editorType==='wiki'){
+    return wikiPreviewPage;
+  }
+
+  if(editorType==='notes'){
+    return notesPage;
+  }
+
+  return tweetPage;
+}
+
+function getActiveScrollArea(){
+  if(editorType==='wiki'){
+    return wikiPreviewPage;
+  }
+
+  if(editorType==='notes'){
+    return notesPage.querySelector(
+      '.notes-original-editor'
+    );
+  }
+
+  return tweetPage.querySelector('.scroll-content');
+}
+function setEditorType(type){
+  if(type==='notes'){
+    editorType='notes';
+  }else if(type==='wiki'){
+    editorType='wiki';
+  }else{
+    editorType='tweet';
+  }
+
+  document.body.classList.toggle(
+    'notes-editor-mode',
+    editorType==='notes'
+  );
+
+  document.body.classList.toggle(
+    'wiki-editor-mode',
+    editorType==='wiki'
+  );
+
+  editorTypeTabs.forEach(function(tab){
+    tab.classList.toggle(
+      'active',
+      tab.getAttribute('data-editor-type')===editorType
+    );
+  });
+
+  /*
+   * 维基视觉页还没有接入。
+   * 这里暂时只更新现有预览数据和编辑器布局。
+   */
+  updatePreview();
+  syncHeightMode();
+
+  if(document.readyState==='complete'){
+    autoSaveDraft();
+  }
+}
+
+editorTypeTabs.forEach(function(tab){
+  tab.addEventListener('click',function(){
+    setEditorType(tab.getAttribute('data-editor-type'));
+  });
+});
+
+
+var editFontFamily=$('editFontFamily');
+var editBold=$('editBold');
+var editBodyImageFile=$('editBodyImageFile');
+
+/* 加粗增量：可改为 50、100、150，数值越大越粗 */
+var GLOBAL_WEIGHT_ADD=100;
+var originalWeights=new Map();
+
+function resetGlobalWeight(){
+  originalWeights.forEach(function(old,el){
+    if(old.value){
+      el.style.setProperty('font-weight',old.value,old.priority);
+    }else{
+      el.style.removeProperty('font-weight');
+    }
+  });
+  originalWeights.clear();
+}
+
+function applyGlobalWeight(){
+  if(!editBold.checked)return;
+
+  /* 先读取全部原始字重，避免父元素加粗后影响子元素的计算 */
+  var items=Array.from(document.querySelectorAll(
+  '.tweet-body, .tweet-body *, ' +
+  '#notesPage .notes-original-body, ' +
+  '#notesPage .notes-original-body *'
+))
+    .filter(function(el){
+      return !el.matches('script, style, link, meta');
+    })
+    .map(function(el){
+      var weight=parseFloat(getComputedStyle(el).fontWeight);
+      return {el:el,weight:Number.isFinite(weight)?weight:400};
+    });
+
+  items.forEach(function(item){
+    var el=item.el;
+    originalWeights.set(el,{
+      value:el.style.getPropertyValue('font-weight'),
+      priority:el.style.getPropertyPriority('font-weight')
+    });
+    el.style.setProperty(
+      'font-weight',
+      String(Math.min(1000,item.weight+GLOBAL_WEIGHT_ADD)),
+      'important'
+    );
+  });
+}
+
+var editReplyText=$('editReplyText');
+var previewReplyText=$('previewReplyText');
+
+function populateFontSelect(){
+  var families=new Set();
+
+  document.fonts.forEach(function(font){
+    var family=font.family.replace(/^["']|["']$/g,'');
+    if(family!=='TweetQuote')families.add(family);
+  });
+
+  families.forEach(function(family){
+    var option=document.createElement('option');
+    option.value=family;
+    option.textContent=family;
+    editFontFamily.appendChild(option);
+  });
+}
+
+var editAvatar=$('editAvatar'),editAvatarFile=$('editAvatarFile'),
+    avatarThumb=$('avatarThumb'),
+    editName=$('editName'),editHandle=$('editHandle'),
+    editVerified=$('editVerified'),editShowTranslate=$('editShowTranslate'),
+    editTransLang=$('editTransLang'),editShowRate=$('editShowRate'),
+    richEditor=$('richEditor'),editIndent=$('editIndent'),
+    editFontSize=$('editFontSize'),editLineHeight=$('editLineHeight'),
+    editFontWeight=$('editFontWeight'),
+    editReply=$('editReply'),editRetweet=$('editRetweet'),
+    editLike=$('editLike'),editBookmark=$('editBookmark'),
+    editTimeSync=$('editTimeSync'),editTime=$('editTime'),editDate=$('editDate'),
+    editViews=$('editViews'),editPageHeight=$('editPageHeight'),
+    charSelect=$('charSelect');
+
+var btnRollData=$('btnRollData');
+
+/*
+ * 在最小值与最大值之间生成随机数。
+ * 使用两次随机数相乘，让结果更常靠近最小值，
+ * 比完全平均随机更接近大多数普通推文的互动表现。
+ */
+function randomRate(min,max){
+  var random=Math.random()*Math.random();
+  return min+(max-min)*random;
+}
+
+function randomInteger(min,max){
+  return Math.floor(Math.random()*(max-min+1))+min;
+}
+
+function parseSocialNumber(value){
+  var text=String(value||'')
+    .trim()
+    .toLowerCase()
+    .replace(/,/g,'')
+    .replace(/，/g,'');
+
+  if(!text)return 0;
+
+  var multiplier=1;
+
+  if(text.endsWith('万')){
+    multiplier=10000;
+    text=text.slice(0,-1);
+  }else if(text.endsWith('w')){
+    multiplier=10000;
+    text=text.slice(0,-1);
+  }else if(text.endsWith('k')){
+    multiplier=1000;
+    text=text.slice(0,-1);
+  }else if(text.endsWith('m')){
+    multiplier=1000000;
+    text=text.slice(0,-1);
+  }
+
+  var number=parseFloat(text);
+
+  return Number.isFinite(number)
+    ? Math.max(0,Math.round(number*multiplier))
+    : 0;
+}
+
+function formatSocialNumber(number){
+  number=Math.max(0,Math.round(number));
+
+  if(number>=1000000){
+    return (number/1000000)
+      .toFixed(number>=10000000 ? 0 : 1)
+      .replace(/\.0$/,'')+'万';
+  }
+
+  if(number>=10000){
+    return (number/10000)
+      .toFixed(number>=100000 ? 0 : 1)
+      .replace(/\.0$/,'')+'万';
+  }
+
+  return String(number);
+}
+
+function rollInteractionData(){
+  var views=parseSocialNumber(editViews.value);
+
+  /*
+   * 没填浏览量时自动生成一个，
+   * 大部分落在几千到几十万，偶尔出现高浏览量。
+   */
+  if(!views){
+    var level=Math.random();
+
+    if(level<0.55){
+      views=randomInteger(1000,30000);
+    }else if(level<0.88){
+      views=randomInteger(30000,300000);
+    }else if(level<0.98){
+      views=randomInteger(300000,1500000);
+    }else{
+      views=randomInteger(1500000,8000000);
+    }
+
+    editViews.value=formatSocialNumber(views);
+  }
+
+  /*
+   * 先生成点赞数，再让其他互动跟随点赞数变化。
+   * 这样各项数据彼此有关联，不会像独立抽签一样失真。
+   */
+  var likeRate=randomRate(0.008,0.065);
+  var likes=Math.max(1,Math.round(views*likeRate));
+
+  var retweets=Math.round(
+    likes*randomRate(0.06,0.24)
+  );
+
+  var replies=Math.round(
+    likes*randomRate(0.012,0.095)
+  );
+
+  var bookmarks=Math.round(
+    likes*randomRate(0.025,0.18)
+  );
+
+  /*
+   * 浏览量很小时加入轻微浮动，
+   * 防止每项数据看起来都过于整齐。
+   */
+  replies=Math.max(
+    0,
+    replies+randomInteger(-1,Math.max(1,Math.round(replies*0.08)))
+  );
+
+  retweets=Math.max(
+    replies,
+    retweets+randomInteger(-1,Math.max(1,Math.round(retweets*0.06)))
+  );
+
+  bookmarks=Math.max(
+    0,
+    bookmarks+randomInteger(-1,Math.max(1,Math.round(bookmarks*0.06)))
+  );
+
+  editReply.value=formatSocialNumber(replies);
+  editRetweet.value=formatSocialNumber(retweets);
+  editLike.value=formatSocialNumber(likes);
+  editBookmark.value=formatSocialNumber(bookmarks);
+
+  updatePreview();
+  autoSaveDraft();
+  showToast('互动数据已 ROLL');
+}
+
+btnRollData.addEventListener('click',rollInteractionData);
+
+var previewAvatar=$('previewAvatar'),previewName=$('previewName'),
+    previewHandle=$('previewHandle'),previewVerified=$('previewVerified'),
+    previewTranslateHint=$('previewTranslateHint'),previewTransLang=$('previewTransLang'),
+    previewRate=$('previewRate'),previewBody=$('previewBody'),
+    previewReply=$('previewReply'),previewRetweet=$('previewRetweet'),
+    previewLike=$('previewLike'),previewBookmark=$('previewBookmark'),
+    previewTime=$('previewTime'),previewDate=$('previewDate'),
+    previewViews=$('previewViews');
+
+var tweetPage=$('tweetPage'),btnEnter=$('btnEnterPreview'),
+    btnBack=$('btnBackEdit'),
+    previewActions=$('previewActions'),toastEl=$('toast');
+
+var toastTimer=null;
+function showToast(msg){
+  toastEl.textContent=msg;toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){toastEl.classList.remove('show')},2200);
+}
+
+/* ==================== 图片预缓存 ==================== */
+var imgCache={};
+
+function collectUrls(){
+  var urls=[];
+
+document.querySelectorAll(
+  '#tweetPage img, #notesPage img, #wikiPreviewPage img'
+).forEach(function(img){
+    ['src','data-light-src','data-dark-src'].forEach(function(attr){
+      var u=img.getAttribute(attr);
+
+      if(
+        u &&
+        u!=='about:blank' &&
+        !u.startsWith('data:') &&
+        !u.startsWith('blob:') &&
+        urls.indexOf(u)<0
+      ){
+        urls.push(u);
+      }
+    });
+  });
+
+  return urls;
+}
+
+function cacheImg(url,pi,cb){
+  if(imgCache[url]) return cb(true);
+  if(pi>=3) return cb(false);
+  var proxied;
+  if(pi===0) proxied='https://wsrv.nl/?url='+encodeURIComponent(url);
+  else if(pi===1) proxied='https://corsproxy.io/?'+encodeURIComponent(url);
+  else proxied='https://api.allorigins.win/raw?url='+encodeURIComponent(url);
+  var img=new Image();
+  img.crossOrigin='anonymous';
+  img.onload=function(){
+    try{
+      var c=document.createElement('canvas');
+      c.width=img.naturalWidth;c.height=img.naturalHeight;
+      c.getContext('2d').drawImage(img,0,0);
+      imgCache[url]=c.toDataURL('image/png');
+      cb(true);
+    }catch(e){cacheImg(url,pi+1,cb)}
+  };
+  img.onerror=function(){cacheImg(url,pi+1,cb)};
+  img.src=proxied;
+}
+
+function startCaching(){
+  collectUrls().forEach(function(url){cacheImg(url,0,function(){})});
+}
+
+function ensureAllCached(cb){
+  var urls=collectUrls();
+  var pending=urls.filter(function(u){return !imgCache[u]});
+  if(pending.length===0) return cb();
+  var done=false,left=pending.length;
+  function finish(){if(done)return;done=true;cb()}
+  pending.forEach(function(url){
+    cacheImg(url,0,function(){left--;if(left<=0)finish()});
+  });
+  setTimeout(finish,10000);
+}
+
+function swapToCache(){
+  var arr=[];
+  tweetPage.querySelectorAll('img').forEach(function(img){
+    var src=img.src;
+    if(imgCache[src]){arr.push({el:img,orig:src});img.src=imgCache[src]}
+  });
+  return arr;
+}
+function swapBack(arr){arr.forEach(function(o){o.el.src=o.orig})}
+
+/* ==================== 头像上传 ==================== */
+function compressImage(file,maxSize,cb){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var c=document.createElement('canvas');
+      var w=img.width,h=img.height;
+      if(w>maxSize||h>maxSize){
+        if(w>h){h=Math.round(h*maxSize/w);w=maxSize}
+        else{w=Math.round(w*maxSize/h);h=maxSize}
+      }
+      c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      cb(c.toDataURL('image/jpeg',0.85));
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+editAvatarFile.addEventListener('change',function(){
+  var file=this.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){showToast('请选择图片文件');return}
+  showToast('正在处理…');
+  compressImage(file,200,function(base64){
+    editAvatar.value=base64;
+    updateAvatarThumb();updatePreview();autoSaveDraft();
+    showToast('头像已上传 ✓');
+  });
+  this.value='';
+});
+
+editAvatar.addEventListener('input',function(){updateAvatarThumb()});
+
+function updateAvatarThumb(){
+  var src=editAvatar.value.trim();
+  if(src){
+    avatarThumb.innerHTML='<img src="'+src+'" alt="">';
+    avatarThumb.classList.add('has-img');
+  }else{
+    avatarThumb.innerHTML='';
+    avatarThumb.classList.remove('has-img');
+  }
+}
+
+/* ==================== 维基百科头图上传 ==================== */
+
+function updateWikiCoverThumb(){
+  var src=editWikiCover.value.trim();
+
+  if(src){
+    wikiCoverThumb.innerHTML=
+      '<img src="'+src+'" alt="维基百科头图">';
+
+    wikiCoverThumb.classList.add('has-img');
+  }else{
+    wikiCoverThumb.innerHTML='';
+    wikiCoverThumb.classList.remove('has-img');
+  }
+}
+
+editWikiCoverFile.addEventListener('change',function(){
+  var file=this.files[0];
+
+  if(!file){
+    return;
+  }
+
+  if(!file.type.startsWith('image/')){
+    showToast('请选择图片文件');
+    this.value='';
+    return;
+  }
+
+  showToast('正在处理头图…');
+
+  /*
+   * 头图适当压缩，避免手机浏览器的草稿空间
+   * 很快被大图片占满。
+   */
+  compressImage(file,1600,function(base64){
+    editWikiCover.value=base64;
+
+    updateWikiCoverThumb();
+    updatePreview();
+    autoSaveDraft();
+
+    showToast('维基头图已上传 ✓');
+  });
+
+  this.value='';
+});
+
+btnRemoveWikiCover.addEventListener('click',function(){
+  if(!editWikiCover.value){
+    showToast('当前没有头图');
+    return;
+  }
+
+  editWikiCover.value='';
+  editWikiCoverFile.value='';
+
+updateWikiCoverThumb();
+  updatePreview();
+  autoSaveDraft();
+
+  showToast('头图已移除');
+});
+
+/* ==================== 维基百科自由文章板块管理 ==================== */
+
+function createWikiBlockId(){
+  return (
+    'wiki_block_' +
+    Date.now() +
+    '_' +
+    Math.random().toString(36).slice(2,8)
+  );
+}
+
+function getWikiBlockTypeName(type){
+  if(type==='section'){
+    return '大章节';
+  }
+
+  if(type==='subsection'){
+    return '小章节';
+  }
+
+  if(type==='image'){
+    return '普通图片';
+  }
+
+  if(type==='notice'){
+    return '维护提示';
+  }
+
+  return '普通正文';
+}
+
+function addWikiArticleBlock(type){
+  var block;
+
+  if(type==='section'){
+    block={
+      id:createWikiBlockId(),
+      type:'section',
+      text:''
+    };
+  }else if(type==='subsection'){
+    block={
+      id:createWikiBlockId(),
+      type:'subsection',
+      text:''
+    };
+  }else if(type==='image'){
+    block={
+      id:createWikiBlockId(),
+      type:'image',
+      src:'',
+      caption:'',
+      alt:'',
+      width:100
+    };
+  }else if(type==='notice'){
+    block={
+      id:createWikiBlockId(),
+      type:'notice',
+
+      /* 提示文字 */
+      text:'',
+
+      /* 日期可以自由填写 */
+      date:'',
+
+      /* 图标地址 */
+      icon:'',
+
+      /* 左侧色条 */
+      color:'#959392',
+
+      /* 提示框底色 */
+      background:'#fafaf9'
+    };
+  }else{
+    block={
+      id:createWikiBlockId(),
+      type:'paragraph',
+      html:''
+    };
+  }
+
+  wikiArticleBlocks.push(block);
+
+  renderWikiBlockEditors();
+  updateWikiPreview();
+  autoSaveDraft();
+
+  showToast(getWikiBlockTypeName(block.type)+'已添加');
+}
+
+btnAddWikiParagraph.addEventListener('click',function(){
+  addWikiArticleBlock('paragraph');
+});
+
+btnAddWikiSection.addEventListener('click',function(){
+  addWikiArticleBlock('section');
+});
+
+btnAddWikiSubsection.addEventListener('click',function(){
+  addWikiArticleBlock('subsection');
+});
+
+btnAddWikiImage.addEventListener('click',function(){
+  addWikiArticleBlock('image');
+});
+
+btnAddWikiNotice.addEventListener('click',function(){
+  addWikiArticleBlock('notice');
+});
+
+/* 获取板块卡片上显示的简短名称 */
+function getWikiBlockCardName(block){
+  if(block.type==='paragraph'){
+    var temp=document.createElement('div');
+    temp.innerHTML=block.html || '';
+
+    var paragraphText=(temp.textContent || '')
+      .replace(/\s+/g,' ')
+      .trim();
+
+    return paragraphText || '尚未填写正文';
+  }
+
+  if(block.type==='image'){
+    var imageCaption=String(block.caption || '').trim();
+    var imageAlt=String(block.alt || '').trim();
+
+    if(imageCaption){
+      return imageCaption;
+    }
+
+    if(imageAlt){
+      return imageAlt;
+    }
+
+    if(block.src){
+      return '已添加图片';
+    }
+
+    return '尚未添加图片';
+  }
+
+if(block.type==='notice'){
+    var noticeText=String(block.text || '')
+      .replace(/\s+/g,' ')
+      .trim();
+
+    return noticeText || '尚未填写提示内容';
+  }
+
+  return (block.text || '').trim() || '尚未填写标题';
+}
+
+/* 上移、下移 */
+function moveWikiArticleBlock(id,direction){
+  var index=wikiArticleBlocks.findIndex(function(block){
+    return block.id===id;
+  });
+
+  if(index<0){
+    return;
+  }
+
+  var targetIndex=index+direction;
+
+  if(
+    targetIndex<0 ||
+    targetIndex>=wikiArticleBlocks.length
+  ){
+    return;
+  }
+
+  var current=wikiArticleBlocks[index];
+
+  wikiArticleBlocks[index]=wikiArticleBlocks[targetIndex];
+  wikiArticleBlocks[targetIndex]=current;
+
+renderWikiBlockEditors();
+  updateWikiPreview();
+  autoSaveDraft();
+}
+
+/*
+ * 生成一个下拉菜单里的注释与引用选项。
+ */
+function fillWikiSourceSelect(select){
+  var oldValue=select.value;
+
+  select.innerHTML='';
+
+  var placeholder=document.createElement('option');
+  placeholder.value='';
+
+  if(wikiSourceItems.length){
+    placeholder.textContent='选择注释或引用标记';
+  }else{
+    placeholder.textContent='请先添加注释或引用';
+  }
+
+  select.appendChild(placeholder);
+
+  var notes=wikiSourceItems.filter(function(item){
+    return item.type==='note';
+  });
+
+  var references=wikiSourceItems.filter(function(item){
+    return item.type==='reference';
+  });
+
+  if(notes.length){
+    var noteGroup=document.createElement('optgroup');
+    noteGroup.label='注释';
+
+    notes.forEach(function(item){
+      var option=document.createElement('option');
+      option.value=item.id;
+      option.textContent=item.label || '未填写标记';
+      noteGroup.appendChild(option);
+    });
+
+    select.appendChild(noteGroup);
+  }
+
+  if(references.length){
+    var referenceGroup=document.createElement('optgroup');
+    referenceGroup.label='引用';
+
+    references.forEach(function(item){
+      var option=document.createElement('option');
+      option.value=item.id;
+      option.textContent=item.label || '未填写标记';
+      referenceGroup.appendChild(option);
+    });
+
+    select.appendChild(referenceGroup);
+  }
+
+  select.disabled=wikiSourceItems.length===0;
+
+  var stillExists=wikiSourceItems.some(function(item){
+    return item.id===oldValue;
+  });
+
+  if(stillExists){
+    select.value=oldValue;
+  }
+}
+
+/*
+ * 将注释或引用标记插入正文当前光标位置。
+ */
+function insertWikiSourceIntoParagraph(
+  editor,
+  block,
+  sourceId,
+  savedRange
+){
+  var source=wikiSourceItems.find(function(item){
+    return item.id===sourceId;
+  });
+
+  if(!source){
+    showToast('请先选择一个标记');
+    return;
+  }
+
+  editor.focus();
+
+  var selection=window.getSelection();
+  var range=null;
+
+  if(
+    savedRange &&
+    editor.contains(savedRange.commonAncestorContainer)
+  ){
+    range=savedRange.cloneRange();
+  }else if(
+    selection.rangeCount &&
+    editor.contains(
+      selection.getRangeAt(0).commonAncestorContainer
+    )
+  ){
+    range=selection.getRangeAt(0);
+  }else{
+    range=document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+  }
+
+  range.deleteContents();
+
+  var token=document.createElement('sup');
+  token.className='wiki-source-token';
+  token.setAttribute('data-source-id',source.id);
+  token.setAttribute('contenteditable','false');
+  token.textContent=source.label || '';
+
+  /*
+   * 标记后添加一个不可见字符，
+   * 这样手机上插入后仍然可以继续输入。
+   */
+  var caretSpace=document.createTextNode('\u200B');
+
+  range.insertNode(caretSpace);
+  range.insertNode(token);
+
+  range.setStartAfter(caretSpace);
+  range.collapse(true);
+
+  selection.removeAllRanges();
+  selection.addRange(range);
+
+  block.html=editor.innerHTML;
+
+  updateWikiPreview();
+  autoSaveDraft();
+}
+
+/*
+ * 创建一张文章板块编辑卡片。
+ */
+function createWikiBlockEditorCard(block,index){
+  var card=document.createElement('div');
+  card.className='wiki-block-editor-card';
+  card.setAttribute('data-block-id',block.id);
+
+  var head=document.createElement('div');
+  head.className='wiki-block-editor-head';
+
+  var badge=document.createElement('span');
+  badge.className='wiki-block-type-badge';
+  badge.textContent=getWikiBlockTypeName(block.type);
+
+  var cardName=document.createElement('div');
+  cardName.className='wiki-block-card-name';
+  cardName.textContent=getWikiBlockCardName(block);
+
+  var actions=document.createElement('div');
+  actions.className='wiki-block-order-actions';
+
+  var upButton=document.createElement('button');
+  upButton.type='button';
+  upButton.textContent='↑';
+  upButton.title='上移';
+  upButton.setAttribute('aria-label','上移');
+
+  var downButton=document.createElement('button');
+  downButton.type='button';
+  downButton.textContent='↓';
+  downButton.title='下移';
+  downButton.setAttribute('aria-label','下移');
+
+  var deleteButton=document.createElement('button');
+  deleteButton.type='button';
+  deleteButton.textContent='×';
+  deleteButton.title='删除';
+  deleteButton.setAttribute('aria-label','删除');
+  deleteButton.className='wiki-block-delete-btn';
+
+  upButton.disabled=index===0;
+  downButton.disabled=index===wikiArticleBlocks.length-1;
+
+  actions.appendChild(upButton);
+  actions.appendChild(downButton);
+  actions.appendChild(deleteButton);
+
+  head.appendChild(badge);
+  head.appendChild(cardName);
+  head.appendChild(actions);
+
+  var body=document.createElement('div');
+  body.className='wiki-block-editor-body';
+
+  if(block.type==='paragraph'){
+    var paragraphEditor=document.createElement('div');
+
+    paragraphEditor.className='wiki-paragraph-editor';
+    paragraphEditor.contentEditable='true';
+    paragraphEditor.setAttribute(
+      'data-placeholder',
+      '在这里填写这一段正文……'
+    );
+
+    paragraphEditor.innerHTML=block.html || '';
+
+    var sourceBar=document.createElement('div');
+    sourceBar.className='wiki-source-insert-bar';
+
+    var sourceSelect=document.createElement('select');
+    sourceSelect.className='wiki-source-insert-select';
+    sourceSelect.setAttribute(
+      'aria-label',
+      '选择要插入的注释或引用'
+    );
+
+    fillWikiSourceSelect(sourceSelect);
+
+    var insertButton=document.createElement('button');
+    insertButton.type='button';
+    insertButton.className='wiki-source-insert-btn';
+    insertButton.textContent='插入光标处';
+    insertButton.disabled=wikiSourceItems.length===0;
+
+    sourceBar.appendChild(sourceSelect);
+    sourceBar.appendChild(insertButton);
+
+    var hint=document.createElement('p');
+    hint.className='wiki-block-small-hint';
+    hint.textContent=
+      '先点击正文中需要插入的位置，再选择标记并点击“插入光标处”。';
+
+    body.appendChild(paragraphEditor);
+    body.appendChild(sourceBar);
+    body.appendChild(hint);
+
+    var savedRange=null;
+
+    function rememberParagraphRange(){
+      var selection=window.getSelection();
+
+      if(!selection.rangeCount){
+        return;
+      }
+
+      var range=selection.getRangeAt(0);
+
+      if(
+        paragraphEditor.contains(
+          range.commonAncestorContainer
+        )
+      ){
+        savedRange=range.cloneRange();
+      }
+    }
+
+paragraphEditor.addEventListener('input',function(){
+  block.html=paragraphEditor.innerHTML;
+  cardName.textContent=getWikiBlockCardName(block);
+
+  rememberParagraphRange();
+  updateWikiPreview();
+  autoSaveDraft();
+});
+
+    paragraphEditor.addEventListener(
+      'keyup',
+      rememberParagraphRange
+    );
+
+    paragraphEditor.addEventListener(
+      'mouseup',
+      rememberParagraphRange
+    );
+
+    paragraphEditor.addEventListener(
+      'touchend',
+      rememberParagraphRange
+    );
+
+    paragraphEditor.addEventListener(
+      'focus',
+      rememberParagraphRange
+    );
+
+    insertButton.addEventListener('mousedown',function(event){
+      /*
+       * 防止点击按钮时，正文光标被按钮抢走。
+       */
+      event.preventDefault();
+    });
+
+    insertButton.addEventListener('click',function(){
+      insertWikiSourceIntoParagraph(
+        paragraphEditor,
+        block,
+        sourceSelect.value,
+        savedRange
+      );
+
+      cardName.textContent=getWikiBlockCardName(block);
+    });
+
+}else if(block.type==='notice'){
+    /*
+     * 编辑器内的即时预览。
+     */
+    var noticePreview=document.createElement('div');
+    noticePreview.className='wiki-notice-editor-preview';
+
+    var noticePreviewIcon=document.createElement('div');
+    noticePreviewIcon.className=
+      'wiki-notice-editor-preview-icon';
+
+    var noticePreviewImage=document.createElement('img');
+    noticePreviewImage.alt='维护提示图标';
+
+    noticePreviewIcon.appendChild(noticePreviewImage);
+
+    var noticePreviewText=document.createElement('div');
+    noticePreviewText.className=
+      'wiki-notice-editor-preview-text';
+
+    noticePreview.appendChild(noticePreviewIcon);
+    noticePreview.appendChild(noticePreviewText);
+
+    /*
+     * 提示文字。
+     */
+    var noticeTextField=document.createElement('div');
+    noticeTextField.className='wiki-notice-editor-field';
+
+    var noticeTextLabel=document.createElement('label');
+    noticeTextLabel.textContent='提示内容';
+
+    var noticeTextInput=document.createElement('textarea');
+    noticeTextInput.value=block.text || '';
+    noticeTextInput.placeholder=
+      '例如：此条目需要补充更多来源';
+
+    noticeTextField.appendChild(noticeTextLabel);
+    noticeTextField.appendChild(noticeTextInput);
+
+    /*
+     * 日期。
+     */
+    var noticeDateField=document.createElement('div');
+    noticeDateField.className='wiki-notice-editor-field';
+
+    var noticeDateLabel=document.createElement('label');
+    noticeDateLabel.textContent='日期或补充文字';
+
+    var noticeDateInput=document.createElement('input');
+    noticeDateInput.type='text';
+    noticeDateInput.value=block.date || '';
+    noticeDateInput.placeholder=
+      '例如：2026年9月27日；留空则隐藏';
+
+    noticeDateField.appendChild(noticeDateLabel);
+    noticeDateField.appendChild(noticeDateInput);
+
+    /*
+     * 图标 URL。
+     */
+    var noticeIconField=document.createElement('div');
+    noticeIconField.className='wiki-notice-editor-field';
+
+    var noticeIconLabel=document.createElement('label');
+    noticeIconLabel.textContent='图标地址或图床 URL';
+
+    var noticeIconInput=document.createElement('input');
+    noticeIconInput.type='url';
+    noticeIconInput.value=block.icon || '';
+    noticeIconInput.placeholder=
+      '可以粘贴 https:// 开头的图片地址';
+
+    noticeIconField.appendChild(noticeIconLabel);
+    noticeIconField.appendChild(noticeIconInput);
+
+    /*
+     * 手机上传图标。
+     */
+    var noticeIconUploadRow=document.createElement('div');
+    noticeIconUploadRow.className=
+      'wiki-notice-icon-upload-row';
+
+    var noticeIconUploadLabel=document.createElement('label');
+    noticeIconUploadLabel.className=
+      'wiki-notice-icon-upload';
+    noticeIconUploadLabel.textContent='＋ 从手机选择图标';
+
+    var noticeIconFile=document.createElement('input');
+    noticeIconFile.type='file';
+    noticeIconFile.accept='image/*';
+    noticeIconFile.hidden=true;
+
+    noticeIconUploadLabel.appendChild(noticeIconFile);
+
+    var noticeIconRemove=document.createElement('button');
+    noticeIconRemove.type='button';
+    noticeIconRemove.className=
+      'wiki-notice-icon-remove';
+    noticeIconRemove.textContent='移除图标';
+
+    noticeIconUploadRow.appendChild(
+      noticeIconUploadLabel
+    );
+    noticeIconUploadRow.appendChild(
+      noticeIconRemove
+    );
+
+    /*
+     * 颜色设置。
+     */
+    var noticeColorGrid=document.createElement('div');
+    noticeColorGrid.className='wiki-notice-color-grid';
+
+    var stripeColorItem=document.createElement('div');
+    stripeColorItem.className='wiki-notice-color-item';
+
+    var stripeColorLabel=document.createElement('label');
+    stripeColorLabel.textContent='左侧色条';
+
+    var stripeColorControl=document.createElement('div');
+    stripeColorControl.className=
+      'wiki-notice-color-control';
+
+    var stripeColorInput=document.createElement('input');
+    stripeColorInput.type='color';
+    stripeColorInput.value=
+      block.color || '#959392';
+
+    stripeColorControl.appendChild(stripeColorInput);
+    stripeColorItem.appendChild(stripeColorLabel);
+    stripeColorItem.appendChild(stripeColorControl);
+
+    var backgroundColorItem=document.createElement('div');
+    backgroundColorItem.className=
+      'wiki-notice-color-item';
+
+    var backgroundColorLabel=document.createElement('label');
+    backgroundColorLabel.textContent='提示框底色';
+
+    var backgroundColorControl=document.createElement('div');
+    backgroundColorControl.className=
+      'wiki-notice-color-control';
+
+    var backgroundColorInput=document.createElement('input');
+    backgroundColorInput.type='color';
+    backgroundColorInput.value=
+      block.background || '#fafaf9';
+
+    backgroundColorControl.appendChild(
+      backgroundColorInput
+    );
+
+    backgroundColorItem.appendChild(
+      backgroundColorLabel
+    );
+
+    backgroundColorItem.appendChild(
+      backgroundColorControl
+    );
+
+    noticeColorGrid.appendChild(stripeColorItem);
+    noticeColorGrid.appendChild(backgroundColorItem);
+
+    body.appendChild(noticePreview);
+    body.appendChild(noticeTextField);
+    body.appendChild(noticeDateField);
+    body.appendChild(noticeIconField);
+    body.appendChild(noticeIconUploadRow);
+    body.appendChild(noticeColorGrid);
+
+    /*
+     * 更新编辑器里的即时预览。
+     */
+    function updateNoticeCardPreview(){
+      var text=String(block.text || '').trim();
+      var date=String(block.date || '').trim();
+      var icon=String(block.icon || '').trim();
+
+      noticePreview.style.setProperty(
+        '--notice-color',
+        block.color || '#959392'
+      );
+
+      noticePreview.style.setProperty(
+        '--notice-bg',
+        block.background || '#fafaf9'
+      );
+
+      noticePreview.style.background=
+        block.background || '#fafaf9';
+
+      noticePreviewText.innerHTML='';
+
+      var mainText=document.createElement('span');
+      mainText.textContent=
+        text || '尚未填写提示内容';
+
+      noticePreviewText.appendChild(mainText);
+
+      if(date){
+        var dateText=document.createElement('span');
+        dateText.className=
+          'wiki-notice-editor-preview-date';
+        dateText.textContent='（'+date+'）';
+
+        noticePreviewText.appendChild(dateText);
+      }
+
+      noticePreview.classList.toggle(
+        'no-icon',
+        !icon
+      );
+
+      if(icon){
+        noticePreviewImage.src=icon;
+      }else{
+        noticePreviewImage.removeAttribute('src');
+      }
+
+      cardName.textContent=getWikiBlockCardName(block);
+    }
+
+    noticePreviewImage.addEventListener(
+      'error',
+      function(){
+        /*
+         * 地址无效时只隐藏编辑器内图标，
+         * 不会删除用户输入的地址。
+         */
+        noticePreview.classList.add('no-icon');
+      }
+    );
+
+    noticeTextInput.addEventListener('input',function(){
+      block.text=this.value;
+
+      updateNoticeCardPreview();
+      updateWikiPreview();
+      autoSaveDraft();
+    });
+
+    noticeDateInput.addEventListener('input',function(){
+      block.date=this.value;
+
+      updateNoticeCardPreview();
+      updateWikiPreview();
+      autoSaveDraft();
+    });
+
+    noticeIconInput.addEventListener('input',function(){
+      block.icon=this.value.trim();
+
+      updateNoticeCardPreview();
+      updateWikiPreview();
+      autoSaveDraft();
+    });
+
+    stripeColorInput.addEventListener(
+      'input',
+      function(){
+        block.color=this.value;
+
+        updateNoticeCardPreview();
+        updateWikiPreview();
+        autoSaveDraft();
+      }
+    );
+
+    backgroundColorInput.addEventListener(
+      'input',
+      function(){
+        block.background=this.value;
+
+        updateNoticeCardPreview();
+        updateWikiPreview();
+        autoSaveDraft();
+      }
+    );
+
+    /*
+     * 上传图标。
+     *
+     * PNG、WebP、GIF 直接读取，可以保留透明背景；
+     * 其他图片压缩为较小尺寸。
+     */
+    noticeIconFile.addEventListener(
+      'change',
+      function(){
+        var file=this.files[0];
+
+        if(!file){
+          return;
+        }
+
+        if(!file.type.startsWith('image/')){
+          showToast('请选择图片文件');
+          this.value='';
+          return;
+        }
+
+        showToast('正在处理提示图标…');
+
+        if(
+          file.type==='image/png' ||
+          file.type==='image/webp' ||
+          file.type==='image/gif' ||
+          file.type==='image/svg+xml'
+        ){
+          var reader=new FileReader();
+
+          reader.onload=function(event){
+            block.icon=event.target.result;
+            noticeIconInput.value=block.icon;
+
+            updateNoticeCardPreview();
+            updateWikiPreview();
+            autoSaveDraft();
+
+            showToast('提示图标已添加');
+          };
+
+          reader.onerror=function(){
+            showToast('图标读取失败');
+          };
+
+          reader.readAsDataURL(file);
+        }else{
+          compressImage(file,300,function(base64){
+            block.icon=base64;
+            noticeIconInput.value=block.icon;
+
+            updateNoticeCardPreview();
+            updateWikiPreview();
+            autoSaveDraft();
+
+            showToast('提示图标已添加');
+          });
+        }
+
+        this.value='';
+      }
+    );
+
+    noticeIconRemove.addEventListener(
+      'click',
+      function(){
+        if(!block.icon){
+          showToast('当前没有图标');
+          return;
+        }
+
+        block.icon='';
+        noticeIconInput.value='';
+        noticeIconFile.value='';
+
+        updateNoticeCardPreview();
+        updateWikiPreview();
+        autoSaveDraft();
+
+        showToast('提示图标已移除');
+      }
+    );
+
+    updateNoticeCardPreview();
+
+  }else if(block.type==='image'){
+    /*
+     * 图片预览
+     */
+    var imagePreview=document.createElement('div');
+    imagePreview.className='wiki-image-editor-preview';
+
+    var previewImage=document.createElement('img');
+    previewImage.alt='图片板块预览';
+
+    imagePreview.appendChild(previewImage);
+
+    function updateImageCardPreview(){
+      var src=String(block.src || '').trim();
+
+      if(src){
+        previewImage.src=src;
+        imagePreview.classList.add('has-image');
+      }else{
+        previewImage.removeAttribute('src');
+        imagePreview.classList.remove('has-image');
+      }
+
+      cardName.textContent=getWikiBlockCardName(block);
+    }
+
+    previewImage.addEventListener('error',function(){
+      imagePreview.classList.remove('has-image');
+    });
+
+    /*
+     * 图床地址
+     */
+    var urlField=document.createElement('div');
+    urlField.className='wiki-image-editor-field';
+
+    var urlLabel=document.createElement('label');
+    urlLabel.textContent='图片地址或图床 URL';
+
+    var urlInput=document.createElement('input');
+    urlInput.type='url';
+    urlInput.value=block.src || '';
+    urlInput.placeholder='可以粘贴 https:// 开头的图片地址';
+
+    urlField.appendChild(urlLabel);
+    urlField.appendChild(urlInput);
+
+    /*
+     * 本地上传与移除
+     */
+    var uploadRow=document.createElement('div');
+    uploadRow.className='wiki-image-upload-row';
+
+    var uploadLabel=document.createElement('label');
+    uploadLabel.className='wiki-image-upload-label';
+    uploadLabel.textContent='＋ 从手机选择图片';
+
+    var fileInput=document.createElement('input');
+    fileInput.type='file';
+    fileInput.accept='image/*';
+    fileInput.hidden=true;
+
+    uploadLabel.appendChild(fileInput);
+
+    var removeImageButton=document.createElement('button');
+    removeImageButton.type='button';
+    removeImageButton.className='wiki-image-remove-btn';
+    removeImageButton.textContent='移除图片';
+
+    uploadRow.appendChild(uploadLabel);
+    uploadRow.appendChild(removeImageButton);
+
+    /*
+     * 图片说明
+     */
+    var captionField=document.createElement('div');
+    captionField.className='wiki-image-editor-field';
+
+    var captionLabel=document.createElement('label');
+    captionLabel.textContent='图片说明';
+
+    var captionInput=document.createElement('input');
+    captionInput.type='text';
+    captionInput.value=block.caption || '';
+    captionInput.placeholder='例如：草地环境中的兔科动物';
+
+    captionField.appendChild(captionLabel);
+    captionField.appendChild(captionInput);
+
+    /*
+     * 替代文字
+     */
+    var altField=document.createElement('div');
+    altField.className='wiki-image-editor-field';
+
+    var altLabel=document.createElement('label');
+    altLabel.textContent='替代文字';
+
+    var altInput=document.createElement('input');
+    altInput.type='text';
+    altInput.value=block.alt || '';
+    altInput.placeholder='图片无法显示时使用，可以留空';
+
+    altField.appendChild(altLabel);
+    altField.appendChild(altInput);
+
+    /*
+     * 图片宽度
+     */
+    var widthField=document.createElement('div');
+    widthField.className='wiki-image-editor-field';
+
+    var widthLabel=document.createElement('label');
+    widthLabel.textContent='图片宽度（10%—100%）';
+
+    var widthRow=document.createElement('div');
+    widthRow.className='wiki-image-width-row';
+
+    var widthRange=document.createElement('input');
+    widthRange.type='range';
+    widthRange.min='10';
+    widthRange.max='100';
+    widthRange.step='1';
+    widthRange.className='wiki-image-width-range';
+    widthRange.value=block.width || 100;
+
+    var widthNumber=document.createElement('input');
+    widthNumber.type='number';
+    widthNumber.min='10';
+    widthNumber.max='100';
+    widthNumber.step='1';
+    widthNumber.className='wiki-image-width-number';
+    widthNumber.value=block.width || 100;
+
+    widthRow.appendChild(widthRange);
+    widthRow.appendChild(widthNumber);
+
+    widthField.appendChild(widthLabel);
+    widthField.appendChild(widthRow);
+
+    body.appendChild(imagePreview);
+    body.appendChild(urlField);
+    body.appendChild(uploadRow);
+    body.appendChild(captionField);
+    body.appendChild(altField);
+    body.appendChild(widthField);
+
+    /*
+     * 统一更新图片宽度。
+     */
+    function setImageBlockWidth(value){
+      var width=Number(value);
+
+      if(!Number.isFinite(width)){
+        width=100;
+      }
+
+      width=Math.round(
+        Math.max(10,Math.min(100,width))
+      );
+
+      block.width=width;
+      widthRange.value=width;
+      widthNumber.value=width;
+
+      updateWikiPreview();
+      autoSaveDraft();
+    }
+
+    /*
+     * 修改图床地址。
+     */
+    urlInput.addEventListener('input',function(){
+      block.src=this.value.trim();
+
+      updateImageCardPreview();
+      updateWikiPreview();
+      autoSaveDraft();
+    });
+
+    /*
+     * 修改图片说明。
+     */
+    captionInput.addEventListener('input',function(){
+      block.caption=this.value;
+
+      cardName.textContent=getWikiBlockCardName(block);
+      updateWikiPreview();
+      autoSaveDraft();
+    });
+
+    /*
+     * 修改替代文字。
+     */
+    altInput.addEventListener('input',function(){
+      block.alt=this.value;
+
+      cardName.textContent=getWikiBlockCardName(block);
+      updateWikiPreview();
+      autoSaveDraft();
+    });
+
+    widthRange.addEventListener('input',function(){
+      setImageBlockWidth(this.value);
+    });
+
+    widthNumber.addEventListener('input',function(){
+      if(this.value===''){
+        return;
+      }
+
+      setImageBlockWidth(this.value);
+    });
+
+    widthNumber.addEventListener('change',function(){
+      setImageBlockWidth(this.value);
+    });
+
+    /*
+     * 从手机上传图片。
+     *
+     * GIF 直接读取，保留动画；
+     * 其他图片适当压缩，减少草稿空间占用。
+     */
+    fileInput.addEventListener('change',function(){
+      var file=this.files[0];
+
+      if(!file){
+        return;
+      }
+
+      if(!file.type.startsWith('image/')){
+        showToast('请选择图片文件');
+        this.value='';
+        return;
+      }
+
+      showToast('正在处理图片…');
+
+      if(file.type==='image/gif'){
+        var reader=new FileReader();
+
+        reader.onload=function(event){
+          block.src=event.target.result;
+          urlInput.value=block.src;
+
+          updateImageCardPreview();
+          updateWikiPreview();
+          autoSaveDraft();
+
+          showToast('动图已添加');
+        };
+
+        reader.onerror=function(){
+          showToast('图片读取失败');
+        };
+
+        reader.readAsDataURL(file);
+      }else{
+        compressImage(file,1600,function(base64){
+          block.src=base64;
+          urlInput.value=block.src;
+
+          updateImageCardPreview();
+          updateWikiPreview();
+          autoSaveDraft();
+
+          showToast('图片已添加');
+        });
+      }
+
+      this.value='';
+    });
+
+    /*
+     * 只移除图片，不删除整个板块。
+     * 图片说明等文字仍会保留。
+     */
+    removeImageButton.addEventListener('click',function(){
+      if(!block.src){
+        showToast('当前没有图片');
+        return;
+      }
+
+      block.src='';
+      urlInput.value='';
+      fileInput.value='';
+
+      updateImageCardPreview();
+      updateWikiPreview();
+      autoSaveDraft();
+
+      showToast('图片已移除');
+    });
+
+    updateImageCardPreview();
+  }else{
+    var titleInput=document.createElement('input');
+
+    titleInput.type='text';
+    titleInput.className='wiki-block-text-input';
+    titleInput.value=block.text || '';
+
+    titleInput.placeholder=
+      block.type==='section'
+        ? '填写大章节标题'
+        : '填写小章节标题';
+
+    titleInput.addEventListener('input',function(){
+      block.text=this.value;
+      cardName.textContent=getWikiBlockCardName(block);
+
+      updateWikiPreview();
+      autoSaveDraft();
+    });
+
+    body.appendChild(titleInput);
+  }
+
+  upButton.addEventListener('click',function(){
+    moveWikiArticleBlock(block.id,-1);
+  });
+
+  downButton.addEventListener('click',function(){
+    moveWikiArticleBlock(block.id,1);
+  });
+
+  deleteButton.addEventListener('click',function(){
+    var name=getWikiBlockCardName(block);
+
+    if(!confirm('确定删除“'+name+'”吗？')){
+      return;
+    }
+
+    wikiArticleBlocks=wikiArticleBlocks.filter(
+      function(currentBlock){
+        return currentBlock.id!==block.id;
+      }
+    );
+
+    renderWikiBlockEditors();
+    updateWikiPreview();
+    autoSaveDraft();
+
+    showToast('文章板块已删除');
+  });
+
+  card.appendChild(head);
+  card.appendChild(body);
+
+  return card;
+}
+
+/* 重新绘制所有文章板块 */
+function renderWikiBlockEditors(){
+  wikiBlockEditorList.innerHTML='';
+
+  if(wikiArticleBlocks.length===0){
+    var empty=document.createElement('div');
+
+    empty.className='wiki-block-list-empty';
+    empty.textContent=
+      '文章目前为空。请从上方添加普通正文、大章节或小章节。';
+
+    wikiBlockEditorList.appendChild(empty);
+    return;
+  }
+
+  wikiArticleBlocks.forEach(function(block,index){
+    wikiBlockEditorList.appendChild(
+      createWikiBlockEditorCard(block,index)
+    );
+  });
+}
+
+/*
+ * 注释或引用名称发生变化时，
+ * 同步正文里已经插入的标记文字。
+ */
+function refreshWikiBlockSourceMenus(){
+  wikiBlockEditorList
+    .querySelectorAll('.wiki-source-insert-select')
+    .forEach(function(select){
+      fillWikiSourceSelect(select);
+    });
+
+  wikiBlockEditorList
+    .querySelectorAll('.wiki-source-insert-btn')
+    .forEach(function(button){
+      button.disabled=wikiSourceItems.length===0;
+    });
+
+  wikiArticleBlocks.forEach(function(block){
+    if(block.type!=='paragraph'){
+      return;
+    }
+
+    var container=document.createElement('div');
+    container.innerHTML=block.html || '';
+
+    container
+      .querySelectorAll('.wiki-source-token')
+      .forEach(function(token){
+        var sourceId=token.getAttribute('data-source-id');
+
+        var source=wikiSourceItems.find(function(item){
+          return item.id===sourceId;
+        });
+
+        if(source){
+          token.textContent=source.label || '';
+        }
+      });
+
+    block.html=container.innerHTML;
+  });
+
+  wikiBlockEditorList
+    .querySelectorAll('.wiki-paragraph-editor')
+    .forEach(function(editor){
+      var blockId=editor
+        .closest('.wiki-block-editor-card')
+        .getAttribute('data-block-id');
+
+      var block=wikiArticleBlocks.find(function(item){
+        return item.id===blockId;
+      });
+
+      if(block){
+        editor.innerHTML=block.html || '';
+      }
+    });
+}
+
+/*
+ * 删除某一条注释或引用时，
+ * 同时移除正文中引用它的标记。
+ */
+function removeWikiSourceFromBlocks(sourceId){
+  wikiArticleBlocks.forEach(function(block){
+    if(block.type!=='paragraph'){
+      return;
+    }
+
+    var container=document.createElement('div');
+    container.innerHTML=block.html || '';
+
+    container
+      .querySelectorAll('.wiki-source-token')
+      .forEach(function(token){
+        if(
+          token.getAttribute('data-source-id')===sourceId
+        ){
+          token.remove();
+        }
+      });
+
+    block.html=container.innerHTML;
+  });
+}
+
+/* ==================== 维基百科注释与引用管理 ==================== */
+
+function createWikiSourceId(){
+  return (
+    'wiki_source_' +
+    Date.now() +
+    '_' +
+    Math.random().toString(36).slice(2,8)
+  );
+}
+
+/* 切换“注释”或“引用” */
+function setWikiSourceDraftType(type){
+  wikiSourceDraftType=
+    type==='reference'
+      ? 'reference'
+      : 'note';
+
+  wikiSourceTypeNote.classList.toggle(
+    'active',
+    wikiSourceDraftType==='note'
+  );
+
+  wikiSourceTypeReference.classList.toggle(
+    'active',
+    wikiSourceDraftType==='reference'
+  );
+
+  btnAddWikiSource.textContent=
+    wikiSourceDraftType==='note'
+      ? '＋ 添加注释'
+      : '＋ 添加引用';
+}
+
+wikiSourceTypeNote.addEventListener('click',function(){
+  setWikiSourceDraftType('note');
+});
+
+wikiSourceTypeReference.addEventListener('click',function(){
+  setWikiSourceDraftType('reference');
+});
+
+/* 创建一张可以继续编辑的小卡片 */
+function createWikiSourceEditorItem(item){
+  var card=document.createElement('div');
+  card.className='wiki-source-item';
+  card.setAttribute('data-source-id',item.id);
+
+  var head=document.createElement('div');
+  head.className='wiki-source-item-head';
+
+  var kind=document.createElement('span');
+  kind.className='wiki-source-kind';
+  kind.textContent=
+    item.type==='reference'
+      ? '引用'
+      : '注释';
+
+  var title=document.createElement('div');
+  title.className='wiki-source-item-label';
+  title.textContent=
+    item.label || '未填写标记';
+
+  head.appendChild(kind);
+  head.appendChild(title);
+
+  var fields=document.createElement('div');
+  fields.className='wiki-source-item-fields';
+
+  var labelInput=document.createElement('input');
+  labelInput.type='text';
+  labelInput.value=item.label || '';
+  labelInput.placeholder='正文标记，可以自由修改';
+  labelInput.setAttribute('aria-label','正文标记');
+
+  var contentInput=document.createElement('textarea');
+  contentInput.value=item.content || '';
+  contentInput.placeholder='详细内容，可以留空';
+  contentInput.setAttribute('aria-label','详细内容');
+
+  fields.appendChild(labelInput);
+  fields.appendChild(contentInput);
+
+  var actions=document.createElement('div');
+  actions.className='wiki-source-item-actions';
+
+  var upButton=document.createElement('button');
+  upButton.type='button';
+  upButton.textContent='↑ 上移';
+
+  var downButton=document.createElement('button');
+  downButton.type='button';
+  downButton.textContent='↓ 下移';
+
+  var deleteButton=document.createElement('button');
+  deleteButton.type='button';
+  deleteButton.className='wiki-source-delete';
+  deleteButton.textContent='删除';
+
+  actions.appendChild(upButton);
+  actions.appendChild(downButton);
+  actions.appendChild(deleteButton);
+
+  card.appendChild(head);
+  card.appendChild(fields);
+  card.appendChild(actions);
+
+/* 修改标记 */
+  labelInput.addEventListener('input',function(){
+    item.label=this.value;
+    title.textContent=item.label || '未填写标记';
+
+    /*
+     * 同步文章正文中已经插入的标记。
+     * 例如将［注 1］改成［兔兔］后，
+     * 正文中的标记也会一起改变。
+     */
+    refreshWikiBlockSourceMenus();
+
+    updatePreview();
+    autoSaveDraft();
+  });
+
+  /* 修改详细内容 */
+  contentInput.addEventListener('input',function(){
+    item.content=this.value;
+
+    updatePreview();
+    autoSaveDraft();
+  });
+
+  /* 上移 */
+  upButton.addEventListener('click',function(){
+    moveWikiSourceItem(item.id,-1);
+  });
+
+  /* 下移 */
+  downButton.addEventListener('click',function(){
+    moveWikiSourceItem(item.id,1);
+  });
+
+  /* 删除 */
+  deleteButton.addEventListener('click',function(){
+    var label=item.label || '这个项目';
+
+    if(!confirm('确定删除“'+label+'”吗？')){
+      return;
+    }
+removeWikiSourceFromBlocks(item.id);
+    wikiSourceItems=wikiSourceItems.filter(function(source){
+      return source.id!==item.id;
+    });
+
+    renderWikiSourceEditors();
+renderWikiBlockEditors();
+updatePreview();
+    autoSaveDraft();
+
+    showToast('已删除');
+  });
+
+  return card;
+}
+
+/*
+ * 分别在同一种类内部上移、下移。
+ * 注释不会跑进引用组，引用也不会跑进注释组。
+ */
+function moveWikiSourceItem(id,direction){
+  var currentIndex=wikiSourceItems.findIndex(function(item){
+    return item.id===id;
+  });
+
+  if(currentIndex<0){
+    return;
+  }
+
+  var currentItem=wikiSourceItems[currentIndex];
+
+  var sameTypeIndexes=[];
+
+  wikiSourceItems.forEach(function(item,index){
+    if(item.type===currentItem.type){
+      sameTypeIndexes.push(index);
+    }
+  });
+
+  var position=sameTypeIndexes.indexOf(currentIndex);
+  var nextPosition=position+direction;
+
+  if(
+    position<0 ||
+    nextPosition<0 ||
+    nextPosition>=sameTypeIndexes.length
+  ){
+    return;
+  }
+
+  var targetIndex=sameTypeIndexes[nextPosition];
+  var targetItem=wikiSourceItems[targetIndex];
+
+  wikiSourceItems[targetIndex]=currentItem;
+  wikiSourceItems[currentIndex]=targetItem;
+
+  renderWikiSourceEditors();
+  updatePreview();
+  autoSaveDraft();
+}
+
+/* 重新绘制注释与引用列表 */
+function renderWikiSourceEditors(){
+  wikiNoteEditorList.innerHTML='';
+  wikiReferenceEditorList.innerHTML='';
+
+  var notes=wikiSourceItems.filter(function(item){
+    return item.type==='note';
+  });
+
+  var references=wikiSourceItems.filter(function(item){
+    return item.type==='reference';
+  });
+
+  wikiNoteCount.textContent=notes.length+' 项';
+  wikiReferenceCount.textContent=references.length+' 项';
+
+  if(notes.length===0){
+    var noteEmpty=document.createElement('div');
+    noteEmpty.className='wiki-source-empty';
+    noteEmpty.textContent='暂无注释';
+    wikiNoteEditorList.appendChild(noteEmpty);
+  }else{
+
+notes.forEach(function(item){
+      wikiNoteEditorList.appendChild(
+        createWikiSourceEditorItem(item)
+      );
+    });
+  }
+
+  if(references.length===0){
+    var referenceEmpty=document.createElement('div');
+    referenceEmpty.className='wiki-source-empty';
+    referenceEmpty.textContent='暂无引用';
+    wikiReferenceEditorList.appendChild(referenceEmpty);
+}else{
+    references.forEach(function(item){
+      wikiReferenceEditorList.appendChild(
+        createWikiSourceEditorItem(item)
+      );
+    });
+  }
+
+  /*
+   * 无论新增的是注释还是引用，
+   * 都立即刷新正文里的插入菜单。
+   */
+  if(typeof refreshWikiBlockSourceMenus==='function'){
+    refreshWikiBlockSourceMenus();
+  }
+}
+
+/*
+ * 根据“自动添加［］”开关处理标记。
+ *
+ * 开启：
+ * 兔兔     → ［兔兔］
+ * 注 1     → ［注 1］
+ *
+ * 如果用户已经输入完整括号，则不会重复添加：
+ * ［兔兔］ → ［兔兔］
+ * [兔兔]   → [兔兔]
+ * （兔兔） → （兔兔）
+ */
+function formatWikiSourceLabel(value){
+  var label=String(value || '').trim();
+
+  if(
+    !label ||
+    !editWikiAutoWrapSourceLabel.checked
+  ){
+    return label;
+  }
+
+  var alreadyWrapped=
+    (
+      label.startsWith('［') &&
+      label.endsWith('］')
+    ) ||
+    (
+      label.startsWith('[') &&
+      label.endsWith(']')
+    ) ||
+    (
+      label.startsWith('【') &&
+      label.endsWith('】')
+    ) ||
+    (
+      label.startsWith('（') &&
+      label.endsWith('）')
+    ) ||
+    (
+      label.startsWith('(') &&
+      label.endsWith(')')
+    );
+
+  if(alreadyWrapped){
+    return label;
+  }
+
+  return '［'+label+'］';
+}
+
+/* 添加新项目 */
+btnAddWikiSource.addEventListener('click',function(){
+  var label=formatWikiSourceLabel(
+    editWikiSourceLabel.value
+  );
+
+  /*
+   * 详细内容允许为空。
+   * 用户以后仍然可以在项目卡片里继续补充。
+   */
+  var content=editWikiSourceContent.value.trim();
+
+  if(!label){
+    showToast('请先填写正文标记');
+    editWikiSourceLabel.focus();
+    return;
+  }
+
+  wikiSourceItems.push({
+    id:createWikiSourceId(),
+    type:wikiSourceDraftType,
+    label:label,
+    content:content
+  });
+
+  editWikiSourceLabel.value='';
+  editWikiSourceContent.value='';
+
+  renderWikiSourceEditors();
+  updatePreview();
+  autoSaveDraft();
+
+  if(content){
+    showToast(
+      wikiSourceDraftType==='note'
+        ? '注释已添加'
+        : '引用已添加'
+    );
+  }else{
+    showToast(
+      wikiSourceDraftType==='note'
+        ? '空内容注释已添加'
+        : '空内容引用已添加'
+    );
+  }
+});
+
+/* ==================== 角色管理 ==================== */
+function getChars(){return loadStore().characters||[]}
+
+function populateCharSelect(){
+  while(charSelect.options.length>1) charSelect.remove(1);
+  getChars().forEach(function(c){
+    var o=document.createElement('option');
+    o.value=c.id;
+    o.textContent=c.name+(c.handle?' ('+c.handle+')':'');
+    charSelect.appendChild(o);
+  });
+}
+
+function loadChar(id){
+  var c=getChars().find(function(x){return x.id===id});
+  if(!c)return;
+  editAvatar.value=c.avatar||'';editName.value=c.name||'';
+  editHandle.value=c.handle||'';editVerified.checked=!!c.verified;
+  updateAvatarThumb();updatePreview();
+}
+
+charSelect.addEventListener('change',function(){
+  if(this.value==='__new__'){
+    editAvatar.value='';editName.value='';editHandle.value='';editVerified.checked=false;
+    updateAvatarThumb();
+  }else{loadChar(this.value)}
+  updatePreview();autoSaveDraft();
+});
+
+$('btnSaveChar').addEventListener('click',function(){
+  var name=editName.value.trim();
+  if(!name){showToast('请先输入用户名');return}
+  var id=charSelect.value==='__new__'?genId():charSelect.value;
+  var ch={id:id,name:editName.value,handle:editHandle.value,
+    avatar:editAvatar.value,verified:editVerified.checked,updatedAt:Date.now()};
+  var d=loadStore();if(!d.characters)d.characters=[];
+  var idx=d.characters.findIndex(function(x){return x.id===id});
+  if(idx>=0)d.characters[idx]=ch;else d.characters.push(ch);
+  d.lastCharId=id;saveStore(d);
+  populateCharSelect();charSelect.value=id;
+  showToast('角色已保存 ✓');
+});
+
+$('btnDelChar').addEventListener('click',function(){
+  if(charSelect.value==='__new__'){showToast('请先选择一个角色');return}
+  if(!confirm('确定删除此角色？'))return;
+  var d=loadStore();
+  d.characters=(d.characters||[]).filter(function(x){return x.id!==charSelect.value});
+  if(d.lastCharId===charSelect.value)d.lastCharId=null;
+  saveStore(d);populateCharSelect();charSelect.value='__new__';
+  editAvatar.value='';editName.value='';editHandle.value='';editVerified.checked=false;
+  updateAvatarThumb();updatePreview();autoSaveDraft();
+  showToast('角色已删除');
+});
+
+/* ==================== 时间同步 ==================== */
+var syncTimer=null;
+function getNow(){
+  var n=new Date();
+  return{
+    time:String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0'),
+    date:n.getFullYear()+'/'+(n.getMonth()+1)+'/'+n.getDate()
+  };
+}
+function syncTime(){
+  var t=getNow();
+  editTime.value=t.time;
+  editDate.value=t.date;
+
+  if(typeof updatePreview==='function'){
+    updatePreview();
+  }
+}
+function startSync(){syncTime();syncTimer=setInterval(syncTime,1000);editTime.readOnly=true;editDate.readOnly=true}
+function stopSync(){clearInterval(syncTimer);syncTimer=null;editTime.readOnly=false;editDate.readOnly=false}
+editTimeSync.addEventListener('change',function(){
+  if(this.checked)startSync();else stopSync();autoSaveDraft();
+});
+
+/* ==================== 富文本编辑 ==================== */
+function checkEditorEmpty(){
+  var html=richEditor.innerHTML;
+  var empty=!html||html==='<br>'||html==='<div><br></div>'||html.replace(/<[^>]*>/g,'').trim()==='';
+  richEditor.classList.toggle('is-empty',empty);
+}
+
+document.querySelectorAll('.tool-btn, .hl-dot').forEach(function(btn){
+  btn.addEventListener('mousedown',function(e){e.preventDefault()});
+});
+
+document.querySelectorAll('.tool-btn[data-cmd]').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.execCommand(btn.getAttribute('data-cmd'),false,null);
+    richEditor.focus();checkEditorEmpty();autoSaveDraft();
+  });
+});
+
+document.querySelectorAll('.hl-dot').forEach(function(dot){
+  dot.addEventListener('click',function(){
+    if(dot.classList.contains('hl-dot-clear')){
+      removeHighlight();
+    }else{
+      applyHighlight(
+        dot.getAttribute('data-bg'),
+        dot.getAttribute('data-text')
+      );
+    }
+
+    richEditor.focus();
+    checkEditorEmpty();
+    updatePreview();
+    autoSaveDraft();
+  });
+});
+
+function unwrapElement(element){
+  var parent=element.parentNode;
+
+  if(!parent)return;
+
+  while(element.firstChild){
+    parent.insertBefore(element.firstChild,element);
+  }
+
+  element.remove();
+}
+
+function applyHighlight(backgroundColor,textColor){
+  var selection=window.getSelection();
+
+  if(!selection.rangeCount||selection.isCollapsed){
+    showToast('请先选中文字');
+    return;
+  }
+
+  var range=selection.getRangeAt(0);
+
+  if(
+    !richEditor.contains(range.startContainer) ||
+    !richEditor.contains(range.endContainer)
+  ){
+    showToast('请在编辑框中选中文字');
+    return;
+  }
+
+  /*
+   * 只处理当前选区里的内容。
+   * 选区外已经存在的马克笔不会被拆除或修改。
+   */
+  var fragment=range.extractContents();
+
+  /*
+   * 清除选区内部原有的马克笔。
+   * 这样给同一句话换颜色时不会产生嵌套。
+   */
+  Array.from(
+  fragment.querySelectorAll('mark, .text-highlight')
+).forEach(function(highlight){
+  unwrapElement(highlight);
+});
+
+  /*
+   * 清理旧版马克笔可能留下的背景色和文字颜色，
+   * 但保留粗体、斜体、下划线等其他格式。
+   */
+  Array.from(fragment.querySelectorAll('span[style]')).forEach(function(span){
+    var hasBackground=
+      span.style.background ||
+      span.style.backgroundColor;
+
+    if(!hasBackground)return;
+
+    span.style.removeProperty('background');
+    span.style.removeProperty('background-color');
+    span.style.removeProperty('color');
+
+    if(!span.getAttribute('style')){
+      unwrapElement(span);
+    }
+  });
+
+  Array.from(fragment.querySelectorAll('font[color]')).forEach(function(font){
+    unwrapElement(font);
+  });
+
+  var newMark=document.createElement('span');
+newMark.className='text-highlight';
+
+  newMark.style.setProperty(
+    'background-color',
+    backgroundColor,
+    'important'
+  );
+
+  newMark.style.setProperty(
+    'color',
+    textColor,
+    'important'
+  );
+
+  newMark.appendChild(fragment);
+  range.insertNode(newMark);
+
+  richEditor.normalize();
+
+  /*
+   * 上色后继续选中当前文字，
+   * 可以直接点击其他颜色进行替换。
+   */
+  selection.removeAllRanges();
+
+  var finalRange=document.createRange();
+  finalRange.selectNodeContents(newMark);
+  selection.addRange(finalRange);
+}
+
+
+function removeHighlight(){
+  var selection=window.getSelection();
+
+  if(!selection.rangeCount||selection.isCollapsed){
+    showToast('请先选中文字');
+    return;
+  }
+
+  var range=selection.getRangeAt(0);
+
+  if(
+    !richEditor.contains(range.startContainer) ||
+    !richEditor.contains(range.endContainer)
+  ){
+    showToast('请在编辑框中选中文字');
+    return;
+  }
+
+  /*
+   * 取出当前选择的内容，只清除选区内部的高亮，
+   * 不会影响正文其他位置已有的马克笔。
+   */
+  var fragment=range.extractContents();
+
+  Array.from(
+  fragment.querySelectorAll('mark, .text-highlight')
+).forEach(function(mark){
+  unwrapElement(mark);
+});
+
+  /*
+   * 清除旧版高亮或手机浏览器生成的背景色 span，
+   * 同时保留粗体、斜体、下划线等格式。
+   */
+  Array.from(fragment.querySelectorAll('span[style]')).forEach(function(span){
+    var hasBackground=
+      span.style.background ||
+      span.style.backgroundColor;
+
+    if(!hasBackground)return;
+
+    span.style.removeProperty('background');
+    span.style.removeProperty('background-color');
+
+    /*
+     * 马克笔会同时设置文字颜色。
+     * 清除背景时也需要清除这项，否则文字会残留颜色。
+     */
+    span.style.removeProperty('color');
+
+    if(!span.getAttribute('style')){
+      unwrapElement(span);
+    }
+  });
+
+  /*
+   * 某些手机浏览器会用 font 标签保存文字颜色。
+   */
+  Array.from(fragment.querySelectorAll('font[color]')).forEach(function(font){
+    unwrapElement(font);
+  });
+
+  range.insertNode(fragment);
+  richEditor.normalize();
+
+  /*
+   * 清除操作后取消当前选区，防止浏览器继续继承
+   * mark 标签的默认黄色背景。
+   */
+  selection.removeAllRanges();
+
+  checkEditorEmpty();
+  updatePreview();
+  autoSaveDraft();
+}
+
+
+richEditor.addEventListener('input',function(){checkEditorEmpty();updatePreview();autoSaveDraft()});
+
+function insertBodyImage(src){
+  richEditor.focus();
+
+  var selection=window.getSelection();
+  var range;
+
+  if(
+    selection.rangeCount &&
+    richEditor.contains(selection.getRangeAt(0).commonAncestorContainer)
+  ){
+    range=selection.getRangeAt(0);
+    range.deleteContents();
+  }else{
+    range=document.createRange();
+    range.selectNodeContents(richEditor);
+    range.collapse(false);
+  }
+
+  var image=document.createElement('img');
+image.src=src;
+image.alt='正文图片';
+image.style.width='100%';
+image.style.maxWidth='100%';
+image.style.height='auto';
+
+  var line=document.createElement('div');
+  line.appendChild(document.createElement('br'));
+
+  range.insertNode(line);
+  range.insertNode(image);
+
+  range.setStartAfter(line);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+
+  checkEditorEmpty();
+  updatePreview();
+  autoSaveDraft();
+}
+
+editBodyImageFile.addEventListener('change',function(){
+  var file=this.files[0];
+  if(!file)return;
+
+  if(!file.type.startsWith('image/')){
+    showToast('请选择图片文件');
+    this.value='';
+    return;
+  }
+
+  showToast('正在处理图片…');
+
+  /*
+   * GIF 必须直接读取，否则经过 canvas 后只剩第一帧。
+   * PNG 和 WebP 直接读取，避免透明背景丢失。
+   * 普通 JPEG 仍然压缩，减少草稿占用空间。
+   */
+  if(
+    file.type==='image/gif' ||
+    file.type==='image/png' ||
+    file.type==='image/webp'
+  ){
+    var reader=new FileReader();
+
+    reader.onload=function(event){
+      insertBodyImage(event.target.result);
+      showToast(
+        file.type==='image/gif'
+          ? '动图已插入'
+          : '透明图片已插入'
+      );
+    };
+
+    reader.onerror=function(){
+      showToast('图片读取失败');
+    };
+
+    reader.readAsDataURL(file);
+  }else{
+    compressImage(file,1600,function(base64){
+      insertBodyImage(base64);
+      showToast('图片已插入');
+    });
+  }
+
+  this.value='';
+});
+
+/* ==================== 一键清除正文 ==================== */
+
+var btnClearBody = $('btnClearBody');
+
+btnClearBody.addEventListener('click', function(){
+  richEditor.innerHTML = '';
+
+  checkEditorEmpty();
+  updatePreview();
+  autoSaveDraft();
+
+  richEditor.focus();
+  showToast('正文已清除');
+});
+
+/* ==================== 图片大小设置 ==================== */
+
+var imageSizeModal=$('imageSizeModal');
+var imageSizeModalOverlay=$('imageSizeModalOverlay');
+var imageSizeClose=$('imageSizeClose');
+var imageSizePreview=$('imageSizePreview');
+var imageSizeRange=$('imageSizeRange');
+var imageSizeNumber=$('imageSizeNumber');
+var imageSizeDelete=$('imageSizeDelete');
+var imageSizeCancel=$('imageSizeCancel');
+var imageSizeApply=$('imageSizeApply');
+
+var editingBodyImage=null;
+var imageSizeBeforeOpen=100;
+
+function normalizeImageWidth(value){
+  var width=Number(value);
+
+  if(!Number.isFinite(width)){
+    width=imageSizeBeforeOpen;
+  }
+
+  return Math.round(
+    Math.max(10,Math.min(100,width))
+  );
+}
+
+function previewImageWidth(value){
+  var width=normalizeImageWidth(value);
+
+  imageSizeRange.value=width;
+  imageSizeNumber.value=width;
+  imageSizePreview.style.width=width+'%';
+}
+
+function openImageSizeModal(image){
+  editingBodyImage=image;
+
+  imageSizeBeforeOpen=
+    parseFloat(image.style.width) ||
+    parseFloat(getComputedStyle(image).width) /
+      Math.max(1,richEditor.clientWidth) * 100 ||
+    100;
+
+  imageSizeBeforeOpen=normalizeImageWidth(imageSizeBeforeOpen);
+
+  imageSizePreview.src=image.src;
+  previewImageWidth(imageSizeBeforeOpen);
+
+  imageSizeModal.classList.add('show');
+  imageSizeModal.setAttribute('aria-hidden','false');
+  document.body.style.overflow='hidden';
+}
+
+function closeImageSizeModal(){
+  imageSizeModal.classList.remove('show');
+  imageSizeModal.setAttribute('aria-hidden','true');
+  imageSizePreview.src='';
+  imageSizePreview.style.width='';
+  editingBodyImage=null;
+  document.body.style.overflow='';
+}
+
+imageSizeRange.addEventListener('input',function(){
+  previewImageWidth(this.value);
+});
+
+imageSizeNumber.addEventListener('input',function(){
+  if(this.value==='')return;
+  previewImageWidth(this.value);
+});
+
+imageSizeNumber.addEventListener('change',function(){
+  previewImageWidth(this.value);
+});
+
+imageSizeApply.addEventListener('click',function(){
+  if(!editingBodyImage)return;
+
+  var width=normalizeImageWidth(imageSizeNumber.value);
+
+  editingBodyImage.style.width=width+'%';
+  editingBodyImage.style.maxWidth='100%';
+  editingBodyImage.style.height='auto';
+
+  updatePreview();
+  autoSaveDraft();
+  closeImageSizeModal();
+  showToast('图片宽度已调整为 '+width+'%');
+});
+
+imageSizeDelete.addEventListener('click',function(){
+  if(!editingBodyImage)return;
+
+  editingBodyImage.remove();
+
+  checkEditorEmpty();
+  updatePreview();
+  autoSaveDraft();
+  closeImageSizeModal();
+  showToast('图片已删除');
+});
+
+imageSizeCancel.addEventListener('click',closeImageSizeModal);
+imageSizeClose.addEventListener('click',closeImageSizeModal);
+imageSizeModalOverlay.addEventListener('click',closeImageSizeModal);
+
+document.addEventListener('keydown',function(event){
+  if(
+    event.key==='Escape' &&
+    imageSizeModal.classList.contains('show')
+  ){
+    closeImageSizeModal();
+  }
+});
+
+richEditor.addEventListener('click',function(event){
+  if(event.target.tagName!=='IMG')return;
+  openImageSizeModal(event.target);
+});
+
+/* ==================== 中文引号字体处理 ==================== */
+/*
+ * 只有“系统默认”时，才单独使用苹方修正中文引号。
+ * 如果选择了其他字体，则完全交给所选字体自己显示引号。
+ */
+function formatChineseQuotes(html) {
+
+  /*
+   * editFontFamily.value 为空，
+   * 代表当前选择的是“系统默认”。
+   *
+   * 选择了其他字体时，直接原样返回，
+   * 不给引号套 PingFang SC。
+   */
+  if (editFontFamily.value) {
+    return html;
+  }
+
+  var container = document.createElement('div');
+  container.innerHTML = html;
+
+  var walker = document.createTreeWalker(
+    container,
+    NodeFilter.SHOW_TEXT
+  );
+
+  var textNodes = [];
+  var node;
+
+  while ((node = walker.nextNode())) {
+    if (
+      node.parentElement &&
+      !node.parentElement.closest('.chinese-quote')
+    ) {
+      textNodes.push(node);
+    }
+  }
+
+  textNodes.forEach(function(textNode) {
+    if (!/[“”‘’]/.test(textNode.nodeValue)) {
+      return;
+    }
+
+    var fragment = document.createDocumentFragment();
+    var pieces = textNode.nodeValue.split(/([“”‘’])/);
+
+    pieces.forEach(function(piece) {
+      if (/^[“”‘’]$/.test(piece)) {
+        var quote = document.createElement('span');
+        quote.className = 'chinese-quote';
+        quote.textContent = piece;
+        fragment.appendChild(quote);
+      } else if (piece) {
+        fragment.appendChild(document.createTextNode(piece));
+      }
+    });
+
+    textNode.parentNode.replaceChild(fragment, textNode);
+  });
+
+  return container.innerHTML;
+}
+
+/* ==================== 维基百科预览生成 ==================== */
+
+var WIKI_TOP_IMAGES={
+  zh:'https://s3.bmp.ovh/2026/09/27/PSyAHdkk.jpg',
+  en:'https://s3.bmp.ovh/2026/09/28/ATrZbEMM.jpg'
+};
+
+function createWikiPencil(){
+  var pencil=document.createElement('span');
+  pencil.className='wiki-preview-pencil';
+  pencil.setAttribute('aria-hidden','true');
+
+  pencil.innerHTML=
+    '<svg xmlns="http://www.w3.org/2000/svg" '+
+    'viewBox="0 0 512 512">'+
+    '<path fill="currentColor" d="'+
+    'm362.7 19.3-48.4 48.4 130 130 48.4-48.4'+
+    'c25-25 25-65.5 0-90.5l-39.4-39.5'+
+    'c-25-25-65.5-25-90.5 0zm-71 71'+
+    'L58.6 323.5c-10.4 10.4-18 23.3-22.2 37.4'+
+    'L1 481.2c-2.5 8.5-.2 17.6 6 23.8'+
+    's15.3 8.5 23.7 6.1L151 475.7'+
+    'c14.1-4.2 27-11.8 37.4-22.2'+
+    'l233.3-233.2z"/></svg>';
+
+  pencil.hidden=!editWikiShowPencil.checked;
+
+  return pencil;
+}
+
+/*
+ * 清理正文编辑时用于光标定位的零宽字符。
+ * 它不会删除用户真正输入的文字。
+ */
+function cleanWikiParagraphHtml(html){
+  return String(html || '').replace(/\u200B/g,'');
+}
+
+function wikiParagraphHasContent(html){
+  var container=document.createElement('div');
+  container.innerHTML=cleanWikiParagraphHtml(html);
+
+  var text=(container.textContent || '')
+    .replace(/\s+/g,'')
+    .trim();
+
+  return (
+    text.length>0 ||
+    container.querySelector('img') ||
+    container.querySelector('.wiki-source-token')
+  );
+}
+
+function renderWikiArticleBlocks(){
+  wikiPreviewBlocks.innerHTML='';
+
+  wikiArticleBlocks.forEach(function(block){
+    if(block.type==='section'){
+      var sectionText=(block.text || '').trim();
+
+      if(!sectionText){
+        return;
+      }
+
+      var section=document.createElement('h2');
+      section.className='wiki-preview-section-title';
+
+      var sectionLabel=document.createElement('span');
+      sectionLabel.className=
+        'wiki-preview-section-title-text';
+      sectionLabel.textContent=sectionText;
+
+      section.appendChild(sectionLabel);
+      section.appendChild(createWikiPencil());
+
+      wikiPreviewBlocks.appendChild(section);
+      return;
+    }
+
+    if(block.type==='subsection'){
+      var subsectionText=(block.text || '').trim();
+
+      if(!subsectionText){
+        return;
+      }
+
+      var subsection=document.createElement('h3');
+      subsection.className='wiki-preview-subsection-title';
+      subsection.textContent=subsectionText;
+
+      wikiPreviewBlocks.appendChild(subsection);
+      return;
+    }
+
+if(block.type==='notice'){
+      var noticeText=String(block.text || '').trim();
+
+      /*
+       * 没有提示内容时完全隐藏。
+       * 只有日期、图标或颜色都不会生成空提示框。
+       */
+      if(!noticeText){
+        return;
+      }
+
+      var notice=document.createElement('div');
+      notice.className='wiki-preview-notice';
+
+      notice.style.setProperty(
+        '--notice-color',
+        block.color || '#959392'
+      );
+
+      notice.style.setProperty(
+        '--notice-bg',
+        block.background || '#fafaf9'
+      );
+
+      var noticeIcon=String(block.icon || '').trim();
+
+      if(noticeIcon){
+        var noticeIconWrap=document.createElement('div');
+        noticeIconWrap.className=
+          'wiki-preview-notice-icon';
+
+        var noticeImage=document.createElement('img');
+        noticeImage.src=noticeIcon;
+        noticeImage.alt='';
+
+        /*
+         * 图标地址失效时自动切换为无图标排版。
+         */
+        noticeImage.addEventListener(
+          'error',
+          function(){
+            notice.classList.add('no-icon');
+            noticeIconWrap.remove();
+
+            refreshPreviewLayout();
+          }
+        );
+
+        noticeIconWrap.appendChild(noticeImage);
+        notice.appendChild(noticeIconWrap);
+      }else{
+        notice.classList.add('no-icon');
+      }
+
+      var noticeBody=document.createElement('div');
+      noticeBody.className='wiki-preview-notice-body';
+
+      var noticeMainText=document.createElement('span');
+      noticeMainText.textContent=noticeText;
+
+      noticeBody.appendChild(noticeMainText);
+
+      var noticeDate=String(block.date || '').trim();
+
+      if(noticeDate){
+        var noticeDateElement=document.createElement(
+          'span'
+        );
+
+        noticeDateElement.className=
+          'wiki-preview-notice-date';
+
+        noticeDateElement.textContent=
+          '（'+noticeDate+'）';
+
+        noticeBody.appendChild(noticeDateElement);
+      }
+
+      notice.appendChild(noticeBody);
+      wikiPreviewBlocks.appendChild(notice);
+      return;
+    }
+
+if(block.type==='image'){
+      var imageSrc=String(block.src || '').trim();
+
+      /*
+       * 没有图片地址时完全跳过，
+       * 即使填写了说明也不会出现空框。
+       */
+      if(!imageSrc){
+        return;
+      }
+
+      var figure=document.createElement('figure');
+      figure.className='wiki-preview-figure';
+
+      var imageWrap=document.createElement('div');
+      imageWrap.className=
+        'wiki-preview-figure-image-wrap';
+
+      var image=document.createElement('img');
+      image.src=imageSrc;
+      image.alt=String(block.alt || '').trim();
+
+      var imageWidth=Number(block.width);
+
+      if(!Number.isFinite(imageWidth)){
+        imageWidth=100;
+      }
+
+      imageWidth=Math.max(
+        10,
+        Math.min(100,imageWidth)
+      );
+
+      image.style.width=imageWidth+'%';
+      image.style.maxWidth='100%';
+      image.style.height='auto';
+
+      imageWrap.appendChild(image);
+      figure.appendChild(imageWrap);
+
+      var caption=String(block.caption || '').trim();
+
+      if(caption){
+        var captionElement=document.createElement(
+          'figcaption'
+        );
+
+        captionElement.textContent=caption;
+        figure.appendChild(captionElement);
+      }
+
+      wikiPreviewBlocks.appendChild(figure);
+      return;
+    }
+
+    if(block.type==='paragraph'){
+      if(!wikiParagraphHasContent(block.html)){
+        return;
+      }
+
+      var paragraph=document.createElement('div');
+      paragraph.className='wiki-preview-paragraph';
+      paragraph.innerHTML=cleanWikiParagraphHtml(
+        block.html
+      );
+
+      /*
+       * 预览页不可编辑。
+       */
+      paragraph
+        .querySelectorAll('[contenteditable]')
+        .forEach(function(element){
+          element.removeAttribute('contenteditable');
+        });
+
+      wikiPreviewBlocks.appendChild(paragraph);
+    }
+  });
+}
+
+function renderWikiSourceList(list,items){
+  list.innerHTML='';
+
+  items.forEach(function(item){
+    var row=document.createElement('li');
+
+    var label=document.createElement('span');
+    label.className='wiki-preview-source-label';
+    label.textContent=item.label || '';
+
+    var content=document.createElement('div');
+    content.className='wiki-preview-source-content';
+    content.textContent=item.content || '';
+
+    row.appendChild(label);
+    row.appendChild(content);
+    list.appendChild(row);
+  });
+}
+
+function updateWikiSourceGroups(){
+  var notes=wikiSourceItems.filter(function(item){
+    return (
+      item.type==='note' &&
+      (
+        (item.label || '').trim() ||
+        (item.content || '').trim()
+      )
+    );
+  });
+
+  var references=wikiSourceItems.filter(function(item){
+    return (
+      item.type==='reference' &&
+      (
+        (item.label || '').trim() ||
+        (item.content || '').trim()
+      )
+    );
+  });
+
+  var hasNotes=notes.length>0;
+  var hasReferences=references.length>0;
+  var hasSources=hasNotes || hasReferences;
+
+  wikiPreviewReferencesArea.classList.toggle(
+    'visible',
+    hasSources
+  );
+
+  wikiPreviewNotesGroup.style.display=
+    hasNotes ? '' : 'none';
+
+  wikiPreviewReferencesGroup.style.display=
+    hasReferences ? '' : 'none';
+
+  renderWikiSourceList(
+    wikiPreviewNotesList,
+    notes
+  );
+
+  renderWikiSourceList(
+    wikiPreviewReferencesList,
+    references
+  );
+
+  wikiPreviewReferencesPencil.hidden=
+    !editWikiShowPencil.checked;
+}
+
+function appendWikiFooterLink(text){
+  var cleanText=String(text || '').trim();
+
+  if(!cleanText){
+    return;
+  }
+
+  var link=document.createElement('a');
+  link.href='#';
+  link.textContent=cleanText;
+
+  link.addEventListener('click',function(event){
+    event.preventDefault();
+  });
+
+  wikiPreviewFooterLinks.appendChild(link);
+}
+
+function updateWikiFooter(){
+  var footerText=editWikiFooter.value.trim();
+
+  wikiPreviewFooterText.textContent=footerText;
+  wikiPreviewFooterLinks.innerHTML='';
+
+  appendWikiFooterLink(editWikiPrivacyText.value);
+  appendWikiFooterLink(editWikiAboutText.value);
+  appendWikiFooterLink(editWikiDisclaimerText.value);
+
+  var hasLinks=
+    wikiPreviewFooterLinks.children.length>0;
+
+  wikiPreviewFooter.classList.toggle(
+    'visible',
+    !!footerText || hasLinks
+  );
+}
+
+function updateWikiPreview(){
+  if(!wikiPreviewPage){
+    return;
+  }
+
+
+  var isEnglish=editWikiLanguage.value==='en';
+
+  wikiPreviewPage.classList.toggle(
+    'lang-en',
+    isEnglish
+  );
+
+  wikiPreviewPage.setAttribute(
+    'lang',
+    isEnglish ? 'en' : 'zh-CN'
+  );
+
+  wikiPreviewTopImage.src=
+    isEnglish
+      ? WIKI_TOP_IMAGES.en
+      : WIKI_TOP_IMAGES.zh;
+
+  wikiPreviewSearchPlaceholder.textContent=
+    isEnglish
+      ? 'Search Wikipedia'
+      : '搜索维基百科';
+
+  wikiPreviewSearchButton.textContent=
+    isEnglish
+      ? 'Search'
+      : '搜索';
+
+  wikiPreviewReferencesTitle.textContent=
+    isEnglish
+      ? 'References'
+      : '参考文献';
+
+  wikiPreviewNotesLabel.textContent=
+    isEnglish
+      ? 'Notes'
+      : '注释';
+
+  wikiPreviewReferencesLabel.textContent=
+    isEnglish
+      ? 'Citations'
+      : '引用';
+
+  /* 标题 */
+  var title=editWikiTitle.value.trim();
+  var subtitle=editWikiSubtitle.value.trim();
+
+  wikiPreviewTitle.textContent=title;
+  wikiPreviewSubtitle.textContent=subtitle;
+
+  wikiPreviewHeader.hidden=!(title || subtitle);
+
+  /* 消歧义 */
+  var disambiguation=
+    editWikiDisambiguation.value.trim();
+
+  wikiPreviewDisambiguation.textContent=
+    disambiguation;
+
+  wikiPreviewDisambiguation.hidden=
+    !editWikiShowDisambiguation.checked ||
+    !disambiguation;
+
+  /* 头图 */
+  var cover=editWikiCover.value.trim();
+
+  wikiPreviewHero.classList.toggle(
+    'visible',
+    !!cover
+  );
+
+  if(cover){
+    if(wikiPreviewHeroImage.src!==cover){
+      wikiPreviewHeroImage.src=cover;
+    }
+
+    wikiPreviewHeroImage.alt=title || '';
+  }else{
+    wikiPreviewHeroImage.removeAttribute('src');
+    wikiPreviewHeroImage.alt='';
+  }
+
+  renderWikiArticleBlocks();
+  updateWikiSourceGroups();
+  updateWikiFooter();
+}
+
+function setupWikiPreviewSourceToggle(
+  button,
+  list
+){
+  button.addEventListener('click',function(){
+    var willOpen=
+      !button.classList.contains('open');
+
+    button.classList.toggle('open',willOpen);
+    list.hidden=!willOpen;
+
+    button.setAttribute(
+      'aria-expanded',
+      willOpen ? 'true' : 'false'
+    );
+
+    refreshPreviewLayout();
+  });
+}
+
+setupWikiPreviewSourceToggle(
+  wikiPreviewNotesButton,
+  wikiPreviewNotesList
+);
+
+setupWikiPreviewSourceToggle(
+  wikiPreviewReferencesButton,
+  wikiPreviewReferencesList
+);
+
+/* ==================== 预览更新 ==================== */
+function updatePreview(){
+resetGlobalWeight();
+updateWikiPreview();
+
+  var av=editAvatar.value.trim();
+  if(av){previewAvatar.src=av;previewAvatar.style.display=''}
+  else{previewAvatar.src='about:blank';previewAvatar.style.display='none'}
+  previewName.textContent=editName.value||'';
+  var h=editHandle.value.trim();
+  if(h&&h.charAt(0)!=='@')h='@'+h;
+  previewHandle.textContent=h||'';
+  previewVerified.style.display=editVerified.checked?'':'none';
+  previewTranslateHint.classList.toggle('visible',editShowTranslate.checked);
+  previewTransLang.textContent='由 Grok 翻译自'+(editTransLang.value||'英语');
+  previewRate.classList.toggle('visible',editShowRate.checked);
+  var bodyHtml=richEditor.innerHTML;
+  if(bodyHtml==='<br>'||bodyHtml==='<div><br></div>')bodyHtml='';
+  previewBody.innerHTML=formatChineseQuotes(bodyHtml);
+  previewBody.style.fontSize=editFontSize.value+'px';
+  previewBody.style.lineHeight=editLineHeight.value;
+var normalWeight=Number(editFontWeight.value)||580;
+
+previewBody.style.fontWeight=String(normalWeight);
+if(editFontFamily.value){
+  document.documentElement.style.setProperty(
+    '--selected-font',
+    JSON.stringify(editFontFamily.value)+', sans-serif'
+  );
+}else{
+  document.documentElement.style.removeProperty('--selected-font');
+}
+  previewBody.classList.toggle('indented',editIndent.checked);
+  previewReply.textContent=editReply.value||'';
+  previewRetweet.textContent=editRetweet.value||'';
+  previewLike.textContent=editLike.value||'';
+  previewBookmark.textContent=editBookmark.value||'';
+  previewTime.textContent=editTime.value||'';
+  previewDate.textContent=editDate.value||'';
+  previewViews.textContent=editViews.value||'';
+previewReplyText.textContent=
+  editReplyText.value.trim()||'发布你的回复';
+
+/* 同步备忘录预览 */
+previewNotesFolder.textContent=
+  editNotesFolder.value.trim()||'备忘录';
+
+previewNotesTitle.textContent=
+  editNotesTitle.value.trim();
+
+function formatNotesDate(){
+  var now=new Date();
+
+  if(!editTimeSync.checked){
+    var dateMatch=(editDate.value||'').match(
+      /(\d{4})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/
+    );
+
+    var timeMatch=(editTime.value||'').match(
+      /(\d{1,2})[:：](\d{2})/
+    );
+
+    if(dateMatch){
+      now.setFullYear(
+        Number(dateMatch[1]),
+        Number(dateMatch[2])-1,
+        Number(dateMatch[3])
+      );
+    }
+
+    if(timeMatch){
+      now.setHours(
+        Number(timeMatch[1]),
+        Number(timeMatch[2]),
+        0,
+        0
+      );
+    }
+  }
+
+  return (
+    now.getFullYear()+'年'+
+    (now.getMonth()+1)+'月'+
+    now.getDate()+'日 '+
+    String(now.getHours()).padStart(2,'0')+':'+
+    String(now.getMinutes()).padStart(2,'0')
+  );
+}
+
+previewNotesDate.textContent=
+  editNotesShowDate.checked
+    ? formatNotesDate()
+    : '';
+
+previewNotesBody.innerHTML=formatChineseQuotes(bodyHtml);
+previewNotesBody.style.fontSize=editFontSize.value+'px';
+previewNotesBody.style.lineHeight=editLineHeight.value;
+previewNotesBody.style.fontWeight=String(normalWeight);
+previewNotesBody.classList.toggle('indented',editIndent.checked);
+
+
+applyGlobalWeight();
+}
+
+document.querySelectorAll('.editor-panel input, .editor-panel select').forEach(function(el){
+  el.addEventListener('input',function(){updatePreview();autoSaveDraft()});
+  el.addEventListener('change',function(){updatePreview();autoSaveDraft()});
+});
+
+/* ==================== 深色模式 ==================== */
+$('editDarkMode').addEventListener('change',function(){
+  document.body.classList.toggle('dark',this.checked);
+  var d=loadStore();
+  d.darkMode=this.checked;
+  saveStore(d);
+  updateActionsImage();
+});
+
+function updateActionsImage(){
+  var isDark=document.body.classList.contains('dark');
+  document.querySelectorAll('.tweet-actions-img, .theme-img').forEach(function(img){
+    var l=img.getAttribute('data-light-src'),dk=img.getAttribute('data-dark-src');
+    if(l) img.src=isDark?(dk||l):l;
+  });
+}
+
+new MutationObserver(function(){updateActionsImage()})
+  .observe(document.body,{attributes:true,attributeFilter:['class']});
+
+/* ==================== 预览模式 ==================== */
+var fadeTimer=null;
+var BASE_WIDTH=430;
+
+var editHeightMode = $('editHeightMode');
+var pageHeightRow = $('pageHeightRow');
+
+function syncHeightMode() {
+  var automatic = editHeightMode.value === 'auto';
+
+  document.body.classList.toggle('auto-tweet', automatic);
+  pageHeightRow.hidden = automatic;
+}
+
+editHeightMode.addEventListener('change', syncHeightMode);
+
+function getPageHeight() {
+  var activePage=getActivePage();
+
+  if(editHeightMode.value!=='auto'){
+    return Math.max(
+      300,
+      Math.min(3000,Number(editPageHeight.value)||600)
+    );
+  }
+
+  var oldWidth=activePage.style.width;
+  var oldHeight=activePage.style.height;
+
+  activePage.style.width=BASE_WIDTH+'px';
+  activePage.style.height='auto';
+
+  var height=Math.ceil(activePage.offsetHeight);
+
+  activePage.style.width=oldWidth;
+  activePage.style.height=oldHeight;
+
+  return Math.max(1,height);
+}
+
+function applyScale(){
+  syncHeightMode();
+
+var activePage=getActivePage();
+
+  [tweetPage,notesPage,wikiPreviewPage]
+    .forEach(function(page){
+      if(page!==activePage){
+        page.style.cssText='';
+      }
+    });
+
+  var sw=window.innerWidth;
+  var sh=window.innerHeight;
+  var ph=getPageHeight();
+  var automatic=editHeightMode.value==='auto';
+
+  var scale=Math.min(sw/BASE_WIDTH,1);
+
+var width=BASE_WIDTH*scale;
+var height=ph*scale;
+var left=Math.max(0,(sw-width)/2);
+var top=0;
+
+Object.assign(activePage.style,{
+  width:BASE_WIDTH+'px',
+  height:ph+'px',
+  position:'absolute',
+  top:top+'px',
+  left:left+'px',
+  overflow:automatic ? 'visible' : 'hidden',
+  transform:'scale('+scale+')',
+  transformOrigin:'top left'
+});
+
+document.body.style.height=
+  Math.max(sh,Math.ceil(height))+'px';
+}
+
+var layoutFrame = null;
+
+function refreshPreviewLayout() {
+  if (!document.body.classList.contains('preview-mode')) return;
+  if (layoutFrame !== null) return;
+
+  layoutFrame = requestAnimationFrame(function() {
+    layoutFrame = null;
+    applyScale();
+  });
+}
+
+document.querySelectorAll(
+    '#tweetPage img, #notesPage img, #wikiPreviewPage img'
+  ).forEach(function(img){
+  img.addEventListener('load',refreshPreviewLayout);
+});
+
+if (document.fonts) {
+  document.fonts.addEventListener(
+    'loadingdone',
+    refreshPreviewLayout
+  );
+}
+
+function showPreviewBtns(){
+  clearTimeout(fadeTimer);
+
+  previewActions.classList.remove('fade-out');
+
+  fadeTimer = setTimeout(function(){
+    previewActions.classList.add('fade-out');
+  }, 2000);
+}
+
+function togglePreviewBtns(){
+  clearTimeout(fadeTimer);
+
+  var isHidden = previewActions.classList.contains('fade-out');
+
+  if(isHidden){
+    previewActions.classList.remove('fade-out');
+
+    fadeTimer = setTimeout(function(){
+      previewActions.classList.add('fade-out');
+    }, 2000);
+  }else{
+    previewActions.classList.add('fade-out');
+  }
+}
+
+/* 记住进入预览之前，编辑页滚动到哪里 */
+var editorScrollTop = 0;
+
+btnEnter.addEventListener('click', function() {
+
+  editorScrollTop =
+    window.scrollY ||
+    document.documentElement.scrollTop ||
+    document.body.scrollTop ||
+    0;
+
+  /* 收起手机键盘，再进入预览 */
+  if (
+    document.activeElement &&
+    typeof document.activeElement.blur === 'function'
+  ) {
+    document.activeElement.blur();
+  }
+
+  updatePreview();
+  document.body.classList.add('preview-mode');
+  window.scrollTo(0, 0);
+  applyScale();
+  showPreviewBtns();
+});
+
+window.addEventListener('resize',function(){
+  if(document.body.classList.contains('preview-mode'))applyScale();
+});
+
+tweetPage.addEventListener('click',function(event){
+  if(event.target.closest('.preview-actions'))return;
+  togglePreviewBtns();
+});
+
+notesPage.addEventListener('click',function(event){
+  if(event.target.closest('.preview-actions'))return;
+  togglePreviewBtns();
+});
+
+wikiPreviewPage.addEventListener('click',function(event){
+  if(event.target.closest('.preview-actions')){
+    return;
+  }
+
+  /*
+   * 点击注释和引用折叠按钮时，
+   * 不额外切换底部的返回按钮。
+   */
+  if(event.target.closest('.wiki-preview-source-toggle')){
+    return;
+  }
+
+  togglePreviewBtns();
+});
+
+btnBack.addEventListener('click', function(e) {
+  e.stopPropagation();
+
+  /* 取消尚未执行的预览布局更新 */
+  if (layoutFrame !== null) {
+    cancelAnimationFrame(layoutFrame);
+    layoutFrame = null;
+  }
+
+  document.body.classList.remove('preview-mode');
+  document.body.style.height = '';
+tweetPage.style.cssText='';
+notesPage.style.cssText='';
+wikiPreviewPage.style.cssText='';
+  clearTimeout(fadeTimer);
+
+  /* 等编辑面板恢复显示，再回到原来的位置 */
+  requestAnimationFrame(function() {
+    window.scrollTo({
+      top: editorScrollTop,
+      left: 0,
+      behavior: 'instant'
+    });
+  });
+});
+
+/* ==================== 草稿 ==================== */
+var draftTimer=null;
+function autoSaveDraft(){clearTimeout(draftTimer);draftTimer=setTimeout(saveDraft,300)}
+
+function saveDraft(){
+  var d=loadStore();
+  d.draft={
+    charId:charSelect.value,avatar:editAvatar.value,
+    name:editName.value,handle:editHandle.value,verified:editVerified.checked,
+    showTranslate:editShowTranslate.checked,transLang:editTransLang.value,
+    showRate:editShowRate.checked,body:richEditor.innerHTML,
+    indent:editIndent.checked,fontSize:editFontSize.value,
+    lineHeight:editLineHeight.value,fontWeight:editFontWeight.value,
+fontFamily:editFontFamily.value,
+bold:editBold.checked,
+    reply:editReply.value,retweet:editRetweet.value,
+    like:editLike.value,bookmark:editBookmark.value,
+    timeSync:editTimeSync.checked,time:editTime.value,
+    date:editDate.value,views:editViews.value,
+pageHeight:editPageHeight.value,
+heightMode:editHeightMode.value,
+replyText:editReplyText.value,
+editorType:editorType,
+
+notesFolder:editNotesFolder.value,
+notesTitle:editNotesTitle.value,
+notesShowDate:editNotesShowDate.checked,
+
+wikiLanguage:editWikiLanguage.value,
+wikiTitle:editWikiTitle.value,
+wikiSubtitle:editWikiSubtitle.value,
+wikiDisambiguation:editWikiDisambiguation.value,
+wikiShowDisambiguation:editWikiShowDisambiguation.checked,
+wikiShowPencil:editWikiShowPencil.checked,
+wikiCover:editWikiCover.value,
+wikiAutoWrapSourceLabel: editWikiAutoWrapSourceLabel.checked,
+wikiFooter:editWikiFooter.value,
+wikiPrivacyText:editWikiPrivacyText.value,
+wikiAboutText:editWikiAboutText.value,
+wikiDisclaimerText:editWikiDisclaimerText.value,
+
+wikiSourceItems:wikiSourceItems.map(function(item){
+  return {
+    id:item.id,
+    type:item.type,
+    label:item.label,
+    content:item.content
+  };
+}),
+
+wikiArticleBlocks:wikiArticleBlocks.map(function(block){
+  if(block.type==='paragraph'){
+    return {
+      id:block.id,
+      type:'paragraph',
+      html:block.html || ''
+    };
+  }
+
+  if(block.type==='image'){
+    return {
+      id:block.id,
+      type:'image',
+      src:block.src || '',
+      caption:block.caption || '',
+      alt:block.alt || '',
+      width:Number(block.width) || 100
+    };
+  }
+
+
+if(block.type==='notice'){
+    return {
+      id:block.id,
+      type:'notice',
+      text:block.text || '',
+      date:block.date || '',
+      icon:block.icon || '',
+      color:block.color || '#959392',
+      background:block.background || '#fafaf9'
+    };
+  }
+  return {
+    id:block.id,
+    type:
+      block.type==='subsection'
+        ? 'subsection'
+        : 'section',
+    text:block.text || ''
+  };
+})
+  };
+  saveStore(d);
+}
+
+function flushDraft(){
+  clearTimeout(draftTimer);
+  draftTimer=null;
+  saveDraft();
+}
+
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='hidden'){
+    flushDraft();
+  }
+});
+
+window.addEventListener('pagehide',function(){
+  flushDraft();
+});
+
+function loadDraft(){
+  var d=loadStore();if(!d.draft)return false;
+  var r=d.draft;
+
+if(r.editorType==='notes'){
+  editorType='notes';
+}else if(r.editorType==='wiki'){
+  editorType='wiki';
+}else{
+  editorType='tweet';
+}
+
+editNotesFolder.value=r.notesFolder||'备忘录';
+editNotesTitle.value=r.notesTitle||'';
+editNotesShowDate.checked=
+  r.notesShowDate!==false;
+
+/* 恢复维基百科编辑内容 */
+editWikiLanguage.value=
+  r.wikiLanguage==='en' ? 'en' : 'zh';
+
+editWikiTitle.value=
+  typeof r.wikiTitle==='string'
+    ? r.wikiTitle
+    : '';
+
+editWikiSubtitle.value=
+  typeof r.wikiSubtitle==='string'
+    ? r.wikiSubtitle
+    : '';
+
+editWikiDisambiguation.value=
+  typeof r.wikiDisambiguation==='string'
+    ? r.wikiDisambiguation
+    : '';
+
+editWikiShowDisambiguation.checked=
+  r.wikiShowDisambiguation!==false;
+
+editWikiShowPencil.checked=
+  r.wikiShowPencil!==false;
+
+editWikiCover.value=
+  typeof r.wikiCover==='string'
+    ? r.wikiCover
+    : '';
+
+/*
+ * 旧草稿没有保存过这一项时，默认开启自动括号。
+ */
+editWikiAutoWrapSourceLabel.checked=
+  r.wikiAutoWrapSourceLabel!==false;
+
+editWikiFooter.value=
+  typeof r.wikiFooter==='string'
+    ? r.wikiFooter
+    : '';
+
+editWikiPrivacyText.value=
+  typeof r.wikiPrivacyText==='string'
+    ? r.wikiPrivacyText
+    : '';
+
+editWikiAboutText.value=
+  typeof r.wikiAboutText==='string'
+    ? r.wikiAboutText
+    : '';
+
+editWikiDisclaimerText.value=
+  typeof r.wikiDisclaimerText==='string'
+    ? r.wikiDisclaimerText
+    : '';
+
+/* 恢复维基百科注释与引用 */
+if(Array.isArray(r.wikiSourceItems)){
+  wikiSourceItems=r.wikiSourceItems
+    .filter(function(item){
+      return (
+        item &&
+        (
+          item.type==='note' ||
+          item.type==='reference'
+        )
+      );
+    })
+    .map(function(item){
+      return {
+        id:item.id || createWikiSourceId(),
+        type:
+          item.type==='reference'
+            ? 'reference'
+            : 'note',
+        label:
+          typeof item.label==='string'
+            ? item.label
+            : '',
+        content:
+          typeof item.content==='string'
+            ? item.content
+            : ''
+      };
+    });
+}else{
+  wikiSourceItems=[];
+}
+
+/* 恢复维基百科自由文章板块 */
+if(Array.isArray(r.wikiArticleBlocks)){
+  wikiArticleBlocks=r.wikiArticleBlocks
+    .filter(function(block){
+      return (
+        block &&
+        (
+block.type==='paragraph' ||
+block.type==='section' ||
+block.type==='subsection' ||
+block.type==='image' ||
+block.type==='notice'
+        )
+      );
+    })
+    .map(function(block){
+if(block.type==='paragraph'){
+        return {
+          id:block.id || createWikiBlockId(),
+          type:'paragraph',
+          html:
+            typeof block.html==='string'
+              ? block.html
+              : ''
+        };
+      }
+
+      if(block.type==='image'){
+        var restoredWidth=Number(block.width);
+
+        if(!Number.isFinite(restoredWidth)){
+          restoredWidth=100;
+        }
+
+        restoredWidth=Math.max(
+          10,
+          Math.min(100,restoredWidth)
+        );
+
+        return {
+          id:block.id || createWikiBlockId(),
+          type:'image',
+          src:
+            typeof block.src==='string'
+              ? block.src
+              : '',
+          caption:
+            typeof block.caption==='string'
+              ? block.caption
+              : '',
+          alt:
+            typeof block.alt==='string'
+              ? block.alt
+              : '',
+          width:restoredWidth
+        };
+      }
+if(block.type==='notice'){
+        return {
+          id:block.id || createWikiBlockId(),
+          type:'notice',
+
+          text:
+            typeof block.text==='string'
+              ? block.text
+              : '',
+
+          date:
+            typeof block.date==='string'
+              ? block.date
+              : '',
+
+          icon:
+            typeof block.icon==='string'
+              ? block.icon
+              : '',
+
+          color:
+            typeof block.color==='string'
+              ? block.color
+              : '#959392',
+
+          background:
+            typeof block.background==='string'
+              ? block.background
+              : '#fafaf9'
+        };
+      }
+
+      return {
+        id:block.id || createWikiBlockId(),
+        type:block.type,
+        text:
+          typeof block.text==='string'
+            ? block.text
+            : ''
+      };
+    });
+}else{
+  wikiArticleBlocks=[];
+}
+
+editHeightMode.value = r.heightMode === 'auto' ? 'auto' : 'fixed';
+  syncHeightMode();
+  if(r.charId&&r.charId!=='__new__')charSelect.value=r.charId;
+  editAvatar.value=r.avatar||'';editName.value=r.name||'';
+  editHandle.value=r.handle||'';editVerified.checked=!!r.verified;
+  editShowTranslate.checked=!!r.showTranslate;editTransLang.value=r.transLang||'';
+  editShowRate.checked=!!r.showRate;
+  if(r.body&&r.body!=='<br>'&&r.body!=='<div><br></div>'){richEditor.innerHTML=r.body}
+  else{richEditor.innerHTML=''}
+  editIndent.checked=!!r.indent;
+  editFontSize.value=r.fontSize||'16';editLineHeight.value=r.lineHeight||'1.55';
+  editFontWeight.value=r.fontWeight||'580';
+editFontFamily.value=r.fontFamily||'';
+if(editFontFamily.selectedIndex<0)editFontFamily.value='';
+editBold.checked=!!r.bold;
+editReplyText.value=
+  typeof r.replyText==='string'
+    ? r.replyText
+    : '发布你的回复';
+  editReply.value=r.reply||'';editRetweet.value=r.retweet||'';
+  editLike.value=r.like||'';editBookmark.value=r.bookmark||'';
+  editViews.value=r.views||'';editPageHeight.value=r.pageHeight||'600';
+  if(r.timeSync===false){
+    editTimeSync.checked=false;editTime.value=r.time||'';editDate.value=r.date||'';
+    editTime.readOnly=false;editDate.readOnly=false;
+  }else{editTimeSync.checked=true}
+  return true;
+}
+
+/* ==================== 初始化 ==================== */
+function init(){
+  var d=loadStore();
+  if(d.darkMode)document.body.classList.add('dark');
+  $('editDarkMode').checked=!!d.darkMode;
+populateCharSelect();
+populateFontSelect();
+var hasDraft=loadDraft();
+setEditorType(editorType);
+  if(editTimeSync.checked)startSync();
+  checkEditorEmpty();
+updateAvatarThumb();
+updateWikiCoverThumb();
+renderWikiSourceEditors();
+renderWikiBlockEditors();
+updateWikiPreview();
+updateActionsImage();
+  updatePreview();
+  setTimeout(startCaching,800);
+  if(hasDraft)showToast('草稿已恢复 ✓');
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
