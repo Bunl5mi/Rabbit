@@ -302,7 +302,7 @@ function codeCard(code) {
           ${idField}
           <label>
             浏览器名额上限
-            <input type="number" name="maxBrowsers" value="${escapeHtml(code.max_browsers)}" min="1" max="20" step="1" required>
+            <input type="number" name="maxBrowsers" value="${escapeHtml(code.max_browsers)}" min="1" max="50"  step="1" required>
           </label>
           <button class="secondary" type="submit">调整名额</button>
         </form>
@@ -508,7 +508,7 @@ export async function managementPage(request, env) {
         </label>
         <label>
           浏览器上限
-          <input type="number" name="maxBrowsers" value="2" min="1" max="20" step="1" required>
+          <input type="number" name="maxBrowsers" value="2" min="1" max="50"  step="1" required>
         </label>
         <button type="submit">生成独立密码</button>
       </form>
