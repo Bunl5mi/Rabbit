@@ -169,7 +169,7 @@ export function privateHeaders(initial = {}) {
 
   headers.set("Cache-Control", "private, no-store");
   headers.set("X-Content-Type-Options", "nosniff");
-  headers.set("Referrer-Policy", "no-referrer");
+headers.set("Referrer-Policy", "same-origin");
 
   return headers;
 }
