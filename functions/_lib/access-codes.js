@@ -28,7 +28,7 @@ function normalizeLimit(value) {
   if (
     !Number.isInteger(limit) ||
     limit < 1 ||
-    limit > 20
+    limit > 50
   ) {
     throw new Error("INVALID_BROWSER_LIMIT");
   }
