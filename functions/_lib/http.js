@@ -37,15 +37,14 @@ export function makeCookie(name, value, maxAge) {
     throw new Error("INVALID_COOKIE");
   }
 
-  return [
+return [
     `${name}=${value}`,
     "Path=/",
     "HttpOnly",
     "Secure",
-    "SameSite=Strict",
+    "SameSite=Lax",
     `Max-Age=${maxAge}`
   ].join("; ");
-}
 
 export function clearCookie(name) {
   return makeCookie(name, "", 0);
