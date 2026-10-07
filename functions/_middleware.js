@@ -33,7 +33,6 @@ import {
 import {
   createAccessCode,
   verifyAccessCode,
-  listAccessCodes,
   updateAccessCodeLabel,
   updateBrowserLimit,
   disableAccessCode,
@@ -58,10 +57,14 @@ import {
 } from "./_lib/login-pages.js";
 
 import {
-  adminDashboardPage,
   accessCodeCreatedPage,
   browserBindingsPage
 } from "./_lib/admin-pages.js";
+
+import {
+  managementPage,
+  deleteAccessCodeRequest
+} from "./_lib/management.js";
 
 const ADMIN_ACTIONS = new Set([
   "/__admin/codes/create",
@@ -509,23 +512,20 @@ async function administratorRoutes(context, path) {
     );
   }
 
-  if (path === "/__admin") {
+if (path === "/__admin") {
     if (!isGet) {
       return methodNotAllowed("GET");
     }
 
-    const page = Number(url.searchParams.get("page") || "1");
-    const codes = await listAccessCodes(env, page);
-    const notice = url.searchParams.get("notice") || "";
+    return managementPage(request, env);
+  }
 
-    return adminDashboardPage({
-      codes,
-      page,
-      message: Object.prototype.hasOwnProperty.call(
-        NOTICE_TEXT,
-        notice
-      ) ? NOTICE_TEXT[notice] : ""
-    });
+  if (path === "/__admin/codes/delete") {
+    if (request.method !== "POST") {
+      return methodNotAllowed("POST");
+    }
+
+    return deleteAccessCodeRequest(request, env);
   }
 
   if (path === "/__admin/bindings") {
