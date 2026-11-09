@@ -14225,6 +14225,7 @@ function __setItem__(k, v) {
   var msg = { type: 'RABBIT_STORAGE_SAVE', key: k, value: String(v) };
   try {
     if (window.parent && window.parent !== window) window.parent.postMessage(msg, '*');
+    if (window.top && window.top !== window && window.top !== window.parent) window.top.postMessage(msg, '*');
   } catch(e) {}
 }
 
@@ -38101,13 +38102,23 @@ if (store[FAVORITE_STORE_KEY]) {
       .replace(/>/g, '&gt;')
       .replace(/\n/g, '<br>');
 
+    /* 1. 写入推文与备忘录共用编辑器，并同步更新两边的独立草稿槽 */
     richEditor.innerHTML = html;
     checkEditorEmpty();
+    if (!separateBodyDrafts || typeof separateBodyDrafts !== 'object') {
+      separateBodyDrafts = { tweet: null, notes: null };
+    }
+    var baseBodyDraft = captureSharedBodyDraft();
+    separateBodyDrafts.tweet = Object.assign({}, separateBodyDrafts.tweet || baseBodyDraft, { body: html });
+    separateBodyDrafts.notes = Object.assign({}, separateBodyDrafts.notes || baseBodyDraft, { body: html });
+    separateBodyDraftsReady = true;
 
+    /* 2. 写入苹果翻译原文 */
     if (editTranslateSourceText) {
       editTranslateSourceText.value = text;
     }
 
+    /* 3. 写入 Kindle 正文 */
     if (editKindleBody) {
       editKindleBody.innerHTML = '';
       text.split(/\n+/).forEach(function(line) {
@@ -38117,28 +38128,57 @@ if (store[FAVORITE_STORE_KEY]) {
         editKindleBody.appendChild(div);
       });
       normalizeKindleEditorBlocks();
+      updateKindlePreview();
     }
 
-    if (doubanData && getDoubanState()) {
-      getDoubanState().body = text;
-      if (doubanControls.body) doubanControls.body.value = text;
+    /* 4. 写入豆瓣书评/影评正文 */
+    if (doubanData) {
+      if (doubanData.book) doubanData.book.body = text;
+      if (doubanData.movie) doubanData.movie.body = text;
+      if (doubanControls && doubanControls.body) doubanControls.body.value = text;
+      updateDoubanPreview();
     }
 
-    if (wereadData && Array.isArray(wereadData.reviews) && wereadData.reviews[0]) {
+    /* 5. 写入微信读书第一条书评 */
+    if (wereadData) {
+      if (!Array.isArray(wereadData.reviews) || !wereadData.reviews.length) {
+        wereadData.reviews = [createWereadReview()];
+      }
       wereadData.reviews[0].body = text;
       renderWereadReviewEditors();
+      updateWereadPreview();
     }
 
-    rememberSeparateBodyDraft();
+    /* 6. 写入维基百科第一段普通正文 */
+    var firstPara = Array.isArray(wikiArticleBlocks)
+      ? wikiArticleBlocks.find(function(b) { return b && b.type === 'paragraph'; })
+      : null;
+    if (firstPara) {
+      firstPara.html = html;
+    } else if (Array.isArray(wikiArticleBlocks)) {
+      wikiArticleBlocks.unshift({
+        id: createWikiBlockId(),
+        type: 'paragraph',
+        html: html
+      });
+    }
+    renderWikiBlockEditors();
+    updateWikiPreview();
+
     updatePreview();
     saveDraft();
     showToast('已导入选中文字 ✓');
   }
 });
 
+/* 同时向 parent 和 top 发送就绪信号，防止中间层拦截 */
 try {
+  var readyMsg = { type: 'RABBIT_STORAGE_READY' };
   if (window.parent && window.parent !== window) {
-    window.parent.postMessage({ type: 'RABBIT_STORAGE_READY' }, '*');
+    window.parent.postMessage(readyMsg, '*');
+  }
+  if (window.top && window.top !== window && window.top !== window.parent) {
+    window.top.postMessage(readyMsg, '*');
   }
 } catch(e) {}
 
