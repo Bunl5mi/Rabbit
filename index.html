@@ -594,11 +594,13 @@ white-space:nowrap;
 body.dark .tweet-body span[style*="background-color"]{color:#1c1c1e}
 .tweet-body.indented{text-indent:2em}
 .tweet-body.indented div,.tweet-body.indented p{text-indent:2em}
-.rich-editor div + div, .rich-editor p + p,
-.tweet-body div + div, .tweet-body p + p,
-#notesPage .notes-original-body div + div, #notesPage .notes-original-body p + p,
-.wiki-paragraph-editor div + div, .wiki-preview-paragraph div + div {
-  margin-top: 0.55em;
+.rich-editor > div + div, .rich-editor > p + p,
+#tweetPage .tweet-body > div + div, #tweetPage .tweet-body > p + p,
+#notesPage .notes-original-body > div + div, #notesPage .notes-original-body > p + p,
+.wiki-paragraph-editor > div + div, #wikiPreviewPage .wiki-preview-paragraph > div + div,
+#translatePreviewPage .translate-preview-text > div + div {
+  display: block;
+  margin-top: 0.6em !important;
 }
 
 .tweet-media {
@@ -15962,7 +15964,7 @@ var reviewParagraphGap=Number(
   );
 
   if(!Number.isFinite(reviewParagraphGap)){
-    reviewParagraphGap=0;
+    reviewParagraphGap=0.4;
   }
 
   wereadPreviewPage.style.setProperty(
@@ -30488,11 +30490,25 @@ var toLanguage=
     toLanguage;
 
 
-  translatePreviewSourceText.textContent=
-    editTranslateSourceText.value;
+  function renderTranslateParagraphs(el, val) {
+    el.innerHTML = '';
+    String(val || '').replace(/\r\n?/g, '\n').split(/\n+/).forEach(function(line) {
+      if (!line.trim()) return;
+      var d = document.createElement('div');
+      d.textContent = line.trim();
+      el.appendChild(d);
+    });
+  }
 
-  translatePreviewResultText.textContent=
-    editTranslateResultText.value;
+  renderTranslateParagraphs(
+    translatePreviewSourceText,
+    editTranslateSourceText.value
+  );
+
+  renderTranslateParagraphs(
+    translatePreviewResultText,
+    editTranslateResultText.value
+  );
 
 fixPreviewChineseQuotes(
   translatePreviewPage
@@ -38350,24 +38366,35 @@ function importSelectedTextToAllEditors(rawText) {
     if (!Array.isArray(wereadData.reviews) || !wereadData.reviews.length) {
       wereadData.reviews = [createWereadReview()];
     }
+    if (!wereadData['段落间距'] || wereadData['段落间距'] === '0') {
+      wereadData['段落间距'] = '0.4';
+      if (wereadControls && wereadControls['段落间距']) {
+        wereadControls['段落间距'].value = '0.4';
+      }
+    }
     wereadData.reviews[0].body = text;
     renderWereadReviewEditors();
     updateWereadPreview();
   }
 
-  /* 6. 写入维基百科第一段普通正文 */
-  var firstPara = Array.isArray(wikiArticleBlocks)
-    ? wikiArticleBlocks.find(function(b) { return b && b.type === 'paragraph'; })
-    : null;
-  if (firstPara) {
-    firstPara.html = html;
-  } else if (Array.isArray(wikiArticleBlocks)) {
-    wikiArticleBlocks.unshift({
-      id: createWikiBlockId(),
-      type: 'paragraph',
-      html: html
+  /* 6. 写入维基百科普通正文 */
+  if (Array.isArray(wikiArticleBlocks)) {
+    wikiArticleBlocks = wikiArticleBlocks.filter(function(b) {
+      return b && b.type !== 'paragraph';
+    });
+    lines.forEach(function(line) {
+      var safe = line
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      wikiArticleBlocks.push({
+        id: createWikiBlockId(),
+        type: 'paragraph',
+        html: safe
+      });
     });
   }
+
   renderWikiBlockEditors();
   updateWikiPreview();
 
