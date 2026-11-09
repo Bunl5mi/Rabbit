@@ -13961,9 +13961,9 @@ data-base-size="23"
   <button
     type="button"
     class="preview-action-btn btn-save"
-    id="btnSaveImage"
+    id="btnScreenshotReady"
   >
-    保存图片
+    沉浸模式
   </button>
 
   <button
@@ -37761,106 +37761,462 @@ function deleteFavorite(id){
   );
 }
 
-
-
-
-/* ==================== 图片预缓存 ==================== */
-var imgCache={};
-
-function collectUrls(){
-  var urls=[
-    KINDLE_WARM_PAPER_TEXTURE,
-    KINDLE_GRAY_PAPER_TEXTURE,
-    TRANSLATE_LIGHT_ICON,
-    TRANSLATE_DARK_ICON,
-    TRANSLATE_NATIVE_LIGHT_ICON,
-    TRANSLATE_NATIVE_DARK_ICON,
-    WIKI_TOP_IMAGES.zh,
-    WIKI_TOP_IMAGES.en
-  ];
-
-  document.querySelectorAll(
-    '#tweetPage img, ' +
-    '#notesPage img, ' +
-    '#wikiPreviewPage img, ' +
-    '#translatePreviewPage img, ' +
-    '#kindlePreviewPage img, ' +
-    '#wereadPreviewPage img, ' +
-    '#doubanPage img'
-  ).forEach(function(img){
-    ['src','data-light-src','data-dark-src'].forEach(function(attr){
-      var u=img.getAttribute(attr);
-      if(
-        u &&
-        u!=='about:blank' &&
-        !u.startsWith('data:') &&
-        !u.startsWith('blob:') &&
-        urls.indexOf(u)<0
-      ){
-        urls.push(u);
-      }
-    });
-  });
-
-  return urls;
+function getFavoriteDefaultName(){
+  if(editorType==='tweet'){
+    return editName.value.trim() || '推文作品';
+  }
+  if(editorType==='notes'){
+    return (
+      editNotesTitle.value.trim() ||
+      editNotesFolder.value.trim() ||
+      '备忘录作品'
+    );
+  }
+  if(editorType==='wiki'){
+    return editWikiTitle.value.trim() || '维基词条';
+  }
+  if(editorType==='translate'){
+    return (
+      editTranslatePageTitle.value.trim() ||
+      '翻译作品'
+    );
+  }
+  if(editorType==='kindle'){
+    return (
+      editKindleHeaderText.value.trim() ||
+      'Kindle 作品'
+    );
+  }
+  if(editorType==='weread'){
+    return (
+      wereadString(wereadData['书名']).trim() ||
+      '微信读书作品'
+    );
+  }
+  if(editorType==='douban'){
+    return (
+      getDoubanState().title.trim() ||
+      (doubanData.format==='movie' ? '豆瓣影评' : '豆瓣书评')
+    );
+  }
+  return '收藏作品';
 }
 
-function cacheImg(url,pi,cb){
-  if(!url) return cb(false);
-  if(imgCache[url]) return cb(true);
-  if(pi>=4) return cb(false);
-  var proxied;
-  if(pi===0) proxied=url;
-  else if(pi===1) proxied='https://wsrv.nl/?url='+encodeURIComponent(url);
-  else if(pi===2) proxied='https://corsproxy.io/?'+encodeURIComponent(url);
-  else proxied='https://api.allorigins.win/raw?url='+encodeURIComponent(url);
-  var img=new Image();
-  img.crossOrigin='anonymous';
-  img.onload=function(){
-    try{
-      var c=document.createElement('canvas');
-      c.width=img.naturalWidth;c.height=img.naturalHeight;
-      c.getContext('2d').drawImage(img,0,0);
-      imgCache[url]=c.toDataURL('image/png');
-      cb(true);
-    }catch(e){cacheImg(url,pi+1,cb)}
-  };
-  img.onerror=function(){cacheImg(url,pi+1,cb)};
-  img.src=proxied;
+function cloneFavoriteValue(value){
+  return value===undefined
+    ? undefined
+    : JSON.parse(JSON.stringify(value));
 }
 
-function startCaching(){
-  collectUrls().forEach(function(url){cacheImg(url,0,function(){})});
-}
-
-function ensureAllCached(cb){
-  var urls=collectUrls();
-  var pending=urls.filter(function(u){return u && !imgCache[u]});
-  if(pending.length===0) return cb();
-  var done=false,left=pending.length;
-  function finish(){if(done)return;done=true;cb()}
-  pending.forEach(function(url){
-    cacheImg(url,0,function(){left--;if(left<=0)finish()});
-  });
-  setTimeout(finish,8000);
-}
-
-function swapToCache(targetPage){
-  var arr=[];
-  var root=targetPage||getActivePage();
-  root.querySelectorAll('img').forEach(function(img){
-    var src=img.getAttribute('src');
-    if(src && imgCache[src]){
-      arr.push({el:img,orig:src});
-      img.src=imgCache[src];
+function copyFavoriteKeys(source,target,keys){
+  keys.forEach(function(key){
+    if(Object.prototype.hasOwnProperty.call(source,key)){
+      target[key]=cloneFavoriteValue(source[key]);
     }
   });
-  return arr;
 }
-function swapBack(arr){arr.forEach(function(o){o.el.src=o.orig})}
 
+function extractFavoriteData(type,fullDraft){
+  var data={};
+  copyFavoriteKeys(fullDraft,data,favoriteOutputKeys);
 
+  if(type==='tweet'){
+    copyFavoriteKeys(fullDraft,data,favoriteTweetKeys);
+    var tweetBody=
+      fullDraft.separateBodyDrafts &&
+      fullDraft.separateBodyDrafts.tweet;
+    data.bodyDraft=cloneFavoriteValue(tweetBody || {});
+    data.darkMode=$('editDarkMode').checked;
+    return data;
+  }
 
+  if(type==='notes'){
+    copyFavoriteKeys(fullDraft,data,[
+      'notesFolder',
+      'notesTitle',
+      'notesShowDate',
+      'timeSync',
+      'time',
+      'date'
+    ]);
+    var notesBody=
+      fullDraft.separateBodyDrafts &&
+      fullDraft.separateBodyDrafts.notes;
+    data.bodyDraft=cloneFavoriteValue(notesBody || {});
+    return data;
+  }
+
+  if(type==='wiki'){
+    Object.keys(fullDraft).forEach(function(key){
+      if(key.indexOf('wiki')===0){
+        data[key]=cloneFavoriteValue(fullDraft[key]);
+      }
+    });
+    var wikiFont=$('wikiFontSettingSlot')
+      ? $('wikiFontSettingSlot').querySelector('#editFontFamily')
+      : null;
+    data.fontFamily=wikiFont ? wikiFont.value : editFontFamily.value;
+    return data;
+  }
+
+  if(type==='translate'){
+    Object.keys(fullDraft).forEach(function(key){
+      if(key.indexOf('translate')===0){
+        data[key]=cloneFavoriteValue(fullDraft[key]);
+      }
+    });
+    data.fontFamily=editFontFamily.value;
+    return data;
+  }
+
+  if(type==='kindle'){
+    Object.keys(fullDraft).forEach(function(key){
+      if(key.indexOf('kindle')===0){
+        data[key]=cloneFavoriteValue(fullDraft[key]);
+      }
+    });
+    return data;
+  }
+
+  if(type==='weread'){
+    data.wereadData=cloneFavoriteValue(fullDraft.wereadData || {});
+    return data;
+  }
+
+  if(type==='douban'){
+    data.doubanData=cloneFavoriteValue(fullDraft.doubanData || {});
+    return data;
+  }
+
+  return data;
+}
+
+function mergeFavoriteIntoDraft(entry,baseDraft){
+  var nextDraft=cloneFavoriteValue(baseDraft || {});
+  var data=entry.data || {};
+  var type=entry.type;
+
+  copyFavoriteKeys(data,nextDraft,favoriteOutputKeys);
+  nextDraft.editorType=type;
+
+  if(!nextDraft.separateBodyDrafts || typeof nextDraft.separateBodyDrafts!=='object'){
+    nextDraft.separateBodyDrafts={tweet:null,notes:null};
+  }
+
+  if(type==='tweet'){
+    copyFavoriteKeys(data,nextDraft,favoriteTweetKeys);
+    if(data.bodyDraft){
+      nextDraft.separateBodyDrafts.tweet=cloneFavoriteValue(data.bodyDraft);
+      nextDraft.body=data.bodyDraft.body || '';
+      nextDraft.fontFamily=data.bodyDraft.fontFamily || '';
+      nextDraft.fontSize=data.bodyDraft.fontSize || '14';
+      nextDraft.lineHeight=data.bodyDraft.lineHeight || '1.55';
+      nextDraft.weightShift=!!data.bodyDraft.weightShift;
+      nextDraft.customHighlightColor=data.bodyDraft.customHighlightColor || '#cf6692';
+    }
+    if(typeof data.darkMode==='boolean'){
+      nextDraft.translateDarkMode=data.darkMode;
+    }
+    return nextDraft;
+  }
+
+  if(type==='notes'){
+    copyFavoriteKeys(data,nextDraft,[
+      'notesFolder',
+      'notesTitle',
+      'notesShowDate',
+      'timeSync',
+      'time',
+      'date'
+    ]);
+    if(data.bodyDraft){
+      nextDraft.separateBodyDrafts.notes=cloneFavoriteValue(data.bodyDraft);
+      nextDraft.body=data.bodyDraft.body || '';
+      nextDraft.fontFamily=data.bodyDraft.fontFamily || '';
+      nextDraft.fontSize=data.bodyDraft.fontSize || '14';
+      nextDraft.lineHeight=data.bodyDraft.lineHeight || '1.55';
+      nextDraft.weightShift=!!data.bodyDraft.weightShift;
+      nextDraft.customHighlightColor=data.bodyDraft.customHighlightColor || '#cf6692';
+    }
+    return nextDraft;
+  }
+
+  if(type==='wiki'){
+    Object.keys(data).forEach(function(key){
+      if(key.indexOf('wiki')===0){
+        nextDraft[key]=cloneFavoriteValue(data[key]);
+      }
+    });
+    if(typeof data.fontFamily==='string'){
+      nextDraft.fontFamily=data.fontFamily;
+    }
+    return nextDraft;
+  }
+
+  if(type==='translate'){
+    Object.keys(data).forEach(function(key){
+      if(key.indexOf('translate')===0){
+        nextDraft[key]=cloneFavoriteValue(data[key]);
+      }
+    });
+    if(typeof data.fontFamily==='string'){
+      nextDraft.fontFamily=data.fontFamily;
+    }
+    return nextDraft;
+  }
+
+  if(type==='kindle'){
+    Object.keys(data).forEach(function(key){
+      if(key.indexOf('kindle')===0){
+        nextDraft[key]=cloneFavoriteValue(data[key]);
+      }
+    });
+    return nextDraft;
+  }
+
+  if(type==='weread'){
+    nextDraft.wereadData=cloneFavoriteValue(data.wereadData);
+    return nextDraft;
+  }
+
+  if(type==='douban'){
+    nextDraft.doubanData=cloneFavoriteValue(data.doubanData);
+    return nextDraft;
+  }
+
+  return nextDraft;
+}
+
+async function refreshFavoriteSelect(preferredId){
+  var currentType=editorType;
+  var currentVersion=++favoriteRenderVersion;
+
+  var list=[];
+  try{
+    list=await readFavoritesByType(currentType);
+  }catch(e){
+    list=[];
+  }
+
+  if(currentVersion!==favoriteRenderVersion){
+    return;
+  }
+
+  list.sort(function(a,b){
+    return (Number(b.updatedAt)||0)-(Number(a.updatedAt)||0);
+  });
+
+  favoriteSelect.innerHTML='';
+
+  var emptyOption=document.createElement('option');
+  emptyOption.value='';
+  emptyOption.textContent=list.length
+    ? '选择'+(favoriteTypeNames[currentType]||'')+'收藏（'+list.length+'）'
+    : '暂无'+(favoriteTypeNames[currentType]||'')+'收藏';
+  favoriteSelect.appendChild(emptyOption);
+
+  list.forEach(function(item){
+    var option=document.createElement('option');
+    option.value=item.id;
+    option.textContent=item.name;
+    favoriteSelect.appendChild(option);
+  });
+
+  var targetId=preferredId!==undefined
+    ? preferredId
+    : (favoriteSelectedIds[currentType] || '');
+
+  var matched=list.find(function(item){
+    return item.id===targetId;
+  });
+
+  favoriteSelect.value=matched ? matched.id : '';
+  favoriteSelectedIds[currentType]=favoriteSelect.value;
+  favoriteName.value=matched ? matched.name : '';
+}
+
+function createFavoriteSnapshot(existingId){
+  if(regexReplacementActive || regexRestoreInProgress){
+    showToast('请先关闭替换预览，再保存收藏');
+    return null;
+  }
+  var fullDraft=saveDraft(true);
+  if(!fullDraft){
+    showToast('当前内容暂时无法整理成收藏');
+    return null;
+  }
+  return {
+    id:existingId || ('fav_'+genId()),
+    name:favoriteName.value.trim() || getFavoriteDefaultName(),
+    type:editorType,
+    updatedAt:Date.now(),
+    data:extractFavoriteData(editorType,fullDraft)
+  };
+}
+
+favoriteSelect.addEventListener('change',async function(){
+  favoriteSelectedIds[editorType]=favoriteSelect.value;
+  if(!favoriteSelect.value){
+    favoriteName.value='';
+    return;
+  }
+  try{
+    var item=await readFavorite(favoriteSelect.value);
+    if(item && item.type===editorType){
+      favoriteName.value=item.name || '';
+    }
+  }catch(e){}
+});
+
+$('btnSaveFavorite').addEventListener('click',async function(){
+  if(favoriteBusy) return;
+  var entry=createFavoriteSnapshot('');
+  if(!entry) return;
+  favoriteBusy=true;
+  try{
+    await writeFavorite(entry);
+    favoriteSelectedIds[editorType]=entry.id;
+    await refreshFavoriteSelect(entry.id);
+    showToast('已加入作品收藏夹 ✓');
+  }catch(e){
+    showToast('收藏保存失败');
+  }finally{
+    favoriteBusy=false;
+  }
+});
+
+$('btnUpdateFavorite').addEventListener('click',async function(){
+  if(favoriteBusy) return;
+  var id=favoriteSelect.value;
+  if(!id){
+    showToast('请先选择一个已收藏作品，或点击“另存新收藏”');
+    return;
+  }
+  favoriteBusy=true;
+  try{
+    var oldItem=await readFavorite(id);
+    if(!oldItem || oldItem.type!==editorType){
+      await refreshFavoriteSelect('');
+      showToast('这条收藏已不存在');
+      return;
+    }
+    var nextEntry=createFavoriteSnapshot(id);
+    if(!nextEntry) return;
+    await writeFavorite(nextEntry);
+    favoriteSelectedIds[editorType]=id;
+    await refreshFavoriteSelect(id);
+    showToast('收藏已更新 ✓');
+  }catch(e){
+    showToast('更新收藏失败');
+  }finally{
+    favoriteBusy=false;
+  }
+});
+
+$('btnLoadFavorite').addEventListener('click',async function(){
+  if(favoriteBusy) return;
+  var id=favoriteSelect.value;
+  if(!id){
+    showToast('请先选择要载入的收藏');
+    return;
+  }
+  if(regexReplacementActive || regexRestoreInProgress){
+    restoreRegexOriginals(false);
+  }
+  favoriteBusy=true;
+  try{
+    var item=await readFavorite(id);
+    if(!item || item.type!==editorType || !item.data){
+      await refreshFavoriteSelect('');
+      showToast('没有找到这条收藏');
+      return;
+    }
+    if(!confirm('载入“'+item.name+'”吗？\n\n当前分类正在编辑的内容会被替换。')){
+      return;
+    }
+    var currentStore=loadStore();
+    var currentDraft=saveDraft(true) || currentStore.draft || {};
+    var nextDraft=mergeFavoriteIntoDraft(item,currentDraft);
+    var tempStore=Object.assign({},currentStore,{draft:nextDraft});
+
+    loadDraft(tempStore);
+    initializeSeparateBodyDrafts(nextDraft);
+    restoreSeparateBodyDraft(editorType);
+
+    syncWikiSearchInputRule();
+    syncWikiOverallWeightOptions();
+    setEditorType(editorType);
+
+    if(editTimeSync.checked){ startSync(); } else { stopSync(); }
+
+    checkEditorEmpty();
+    refreshTweetImageEditor();
+    updateAvatarThumb();
+    renderAllCommentEditors();
+    renderTweetComments();
+    updateWikiCoverThumb();
+    updateWikiRevisionInputState();
+    renderWikiSourceEditors();
+    renderWikiBlockEditors();
+    updateKindlePreview();
+    updateWikiPreview();
+    updateWereadPreview();
+    updateDoubanPreview();
+    updateActionsImage();
+    updatePreview();
+
+    if(editorType==='kindle'){
+      kindleUndoHistory=[];
+      kindleUndoCurrent=getKindleUndoSnapshot();
+      kindleUndoLastTypingTime=0;
+      syncKindleUndoButton();
+    }
+
+    flushDraft();
+    favoriteSelectedIds[editorType]=id;
+    await refreshFavoriteSelect(id);
+    showToast('已载入收藏：'+item.name);
+  }catch(e){
+    showToast('载入收藏失败');
+  }finally{
+    favoriteBusy=false;
+  }
+});
+
+$('btnDeleteFavorite').addEventListener('click',async function(){
+  if(favoriteBusy) return;
+  var id=favoriteSelect.value;
+  if(!id){
+    showToast('请先选择要删除的收藏');
+    return;
+  }
+  favoriteBusy=true;
+  try{
+    var item=await readFavorite(id);
+    if(!item){
+      await refreshFavoriteSelect('');
+      showToast('这条收藏已不存在');
+      return;
+    }
+    if(!confirm('删除收藏“'+item.name+'”吗？')){
+      return;
+    }
+    await deleteFavorite(id);
+    delete favoriteSelectedIds[editorType];
+    await refreshFavoriteSelect('');
+    showToast('收藏已删除');
+  }catch(e){
+    showToast('删除收藏失败');
+  }finally{
+    favoriteBusy=false;
+  }
+});
+
+editorTypeTabs.forEach(function(tab){
+  tab.addEventListener('click',function(){
+    refreshFavoriteSelect();
+  });
+});
 
 /* ==================== 初始化 ==================== */
 function init(){
@@ -37870,47 +38226,41 @@ function init(){
   initRegexTool();
   buildKindleWorkbench();
 
-var d=loadStore();
+  var d=loadStore();
 
-if(d.darkMode){
-  document.body.classList.add('dark');
-}
+  if(d.darkMode){
+    document.body.classList.add('dark');
+  }
 
-$('editDarkMode').checked=
-  !!d.darkMode;
+  $('editDarkMode').checked=!!d.darkMode;
+  editTranslateDarkMode.checked=!!d.darkMode;
 
-editTranslateDarkMode.checked=
-  !!d.darkMode;
+  populateCharSelect();
+  populateWikiEntrySelect(loadStore().lastWikiEntryId);
 
-populateCharSelect();
+  var hasDraft=loadDraft();
 
-populateWikiEntrySelect(
-  loadStore().lastWikiEntryId
-);
+  initializeSeparateBodyDrafts();
+  restoreSeparateBodyDraft(editorType);
 
-var hasDraft=loadDraft();
-
-initializeSeparateBodyDrafts();
-restoreSeparateBodyDraft(editorType);
-
-syncWikiSearchInputRule();
-syncWikiOverallWeightOptions();
-setEditorType(editorType);
+  syncWikiSearchInputRule();
+  syncWikiOverallWeightOptions();
+  setEditorType(editorType);
   if(editTimeSync.checked)startSync();
   checkEditorEmpty();
-refreshTweetImageEditor();
-updateAvatarThumb();
-renderAllCommentEditors();
-renderTweetComments();
-updateWikiCoverThumb();
-updateWikiRevisionInputState();
-renderWikiSourceEditors();
-renderWikiBlockEditors();
-updateKindlePreview();
-updateWikiPreview();
-updateActionsImage();
+  refreshTweetImageEditor();
+  updateAvatarThumb();
+  renderAllCommentEditors();
+  renderTweetComments();
+  updateWikiCoverThumb();
+  updateWikiRevisionInputState();
+  renderWikiSourceEditors();
+  renderWikiBlockEditors();
+  updateKindlePreview();
+  updateWikiPreview();
+  updateActionsImage();
   updatePreview();
-  setTimeout(startCaching,800);
+  refreshFavoriteSelect();
   if(hasDraft)showToast('草稿已恢复 ✓');
 }
 
@@ -37920,119 +38270,98 @@ kindleUndoCurrent=getKindleUndoSnapshot();
 kindleUndoReady=true;
 syncKindleUndoButton();
 
-/* ==================== 一键生成高清截图 ==================== */
-var btnSaveImage = $('btnSaveImage');
-var saveModal = $('saveModal');
-var saveModalImg = $('saveModalImg');
-var saveModalOverlay = $('saveModalOverlay');
-var btnDownloadImg = $('btnDownloadImg');
-var btnCloseSaveModal = $('btnCloseSaveModal');
-var isGeneratingShot = false;
-
-function closeSaveModal() {
-  saveModal.classList.remove('show');
-  saveModal.setAttribute('aria-hidden', 'true');
+/* ==================== 沉浸模式 ==================== */
+var btnScreenshotReady = $('btnScreenshotReady');
+if (btnScreenshotReady) {
+  btnScreenshotReady.addEventListener('click', function(event) {
+    event.stopPropagation();
+    clearTimeout(fadeTimer);
+    clearTimeout(toastTimer);
+    toastEl.classList.remove('show');
+    toastEl.textContent = '';
+    previewActions.classList.add('fade-out');
+  });
 }
 
-saveModalOverlay.addEventListener('click', closeSaveModal);
-btnCloseSaveModal.addEventListener('click', closeSaveModal);
+/* ==================== 接收来自酒馆的存档与选中文字 ==================== */
+function importSelectedTextToAllEditors(rawText) {
+  var text = String(rawText || '').trim();
+  if (!text) return;
 
-btnDownloadImg.addEventListener('click', function() {
-  if (!saveModalImg.src) return;
-  var a = document.createElement('a');
-  a.href = saveModalImg.src;
-  a.download = 'rabbit_' + editorType + '_' + Date.now() + '.png';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  showToast('已开始下载 ✓');
-});
+  var html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
 
-btnSaveImage.addEventListener('click', function(event) {
-  event.stopPropagation();
-  if (isGeneratingShot) return;
+  /* 1. 写入推文与备忘录编辑器，并同步两个独立草稿槽 */
+  richEditor.innerHTML = html;
+  checkEditorEmpty();
+  if (!separateBodyDrafts || typeof separateBodyDrafts !== 'object') {
+    separateBodyDrafts = { tweet: null, notes: null };
+  }
+  var baseBodyDraft = captureSharedBodyDraft();
+  separateBodyDrafts.tweet = Object.assign({}, separateBodyDrafts.tweet || baseBodyDraft, { body: html });
+  separateBodyDrafts.notes = Object.assign({}, separateBodyDrafts.notes || baseBodyDraft, { body: html });
+  separateBodyDraftsReady = true;
 
-  if (typeof modernScreenshot === 'undefined' || !modernScreenshot.domToPng) {
-    showToast('截图组件加载中，请稍后再试');
-    return;
+  /* 2. 写入苹果翻译原文 */
+  if (editTranslateSourceText) {
+    editTranslateSourceText.value = text;
   }
 
-  isGeneratingShot = true;
-  clearTimeout(fadeTimer);
-  showToast('正在生成高清图片，请稍候…');
-
-  var activePage = getActivePage();
-  var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
-
-  fontsReady.catch(function(){}).then(function() {
-    ensureAllCached(function() {
-      var swapped = swapToCache(activePage);
-
-      var prevTransform = activePage.style.transform;
-      var prevLeft = activePage.style.left;
-      var prevTop = activePage.style.top;
-      var targetWidth = BASE_WIDTH;
-      var targetHeight = getPageHeight();
-
-      activePage.style.transform = 'scale(1)';
-      activePage.style.left = '0px';
-      activePage.style.top = '0px';
-      activePage.style.width = targetWidth + 'px';
-      activePage.style.height = targetHeight + 'px';
-
-      if (editorType === 'tweet') applyTweetMediaSquircles();
-      if (editorType === 'translate') refreshTranslateAppearance();
-      if (editorType === 'kindle') refreshAllKindleHighlightShapes();
-      if (editorType === 'weread') refreshWereadAppearance();
-      if (editorType === 'douban') refreshDoubanAppearance();
-
-      requestAnimationFrame(function() {
-        setTimeout(function() {
-          modernScreenshot.domToPng(activePage, {
-            width: targetWidth,
-            height: targetHeight,
-            scale: 2,
-            style: {
-              transform: 'none',
-              left: '0px',
-              top: '0px',
-              margin: '0px'
-            },
-            fetch: {
-              requestInit: { mode: 'cors' },
-              bypassingCache: false
-            }
-          }).then(function(dataUrl) {
-            activePage.style.transform = prevTransform;
-            activePage.style.left = prevLeft;
-            activePage.style.top = prevTop;
-            swapBack(swapped);
-            applyScale();
-            isGeneratingShot = false;
-
-            saveModalImg.src = dataUrl;
-            saveModal.classList.add('show');
-            saveModal.setAttribute('aria-hidden', 'false');
-            showToast('生成成功！长按图片即可保存 ✓');
-            showPreviewBtns();
-          }).catch(function(err) {
-            console.error('截图失败：', err);
-            activePage.style.transform = prevTransform;
-            activePage.style.left = prevLeft;
-            activePage.style.top = prevTop;
-            swapBack(swapped);
-            applyScale();
-            isGeneratingShot = false;
-            showToast('生成失败，请重试');
-            showPreviewBtns();
-          });
-        }, 120);
-      });
+  /* 3. 写入 Kindle 正文 */
+  if (editKindleBody) {
+    editKindleBody.innerHTML = '';
+    text.split(/\n+/).forEach(function(line) {
+      if (!line.trim()) return;
+      var div = document.createElement('div');
+      div.textContent = line.trim();
+      editKindleBody.appendChild(div);
     });
-  });
-});
+    normalizeKindleEditorBlocks();
+    updateKindlePreview();
+  }
 
-/* ==================== 接收来自酒馆的存档与选中文字 ==================== */
+  /* 4. 写入豆瓣书评/影评正文 */
+  if (doubanData) {
+    if (doubanData.book) doubanData.book.body = text;
+    if (doubanData.movie) doubanData.movie.body = text;
+    if (doubanControls && doubanControls.body) doubanControls.body.value = text;
+    updateDoubanPreview();
+  }
+
+  /* 5. 写入微信读书第一条书评 */
+  if (wereadData) {
+    if (!Array.isArray(wereadData.reviews) || !wereadData.reviews.length) {
+      wereadData.reviews = [createWereadReview()];
+    }
+    wereadData.reviews[0].body = text;
+    renderWereadReviewEditors();
+    updateWereadPreview();
+  }
+
+  /* 6. 写入维基百科第一段普通正文 */
+  var firstPara = Array.isArray(wikiArticleBlocks)
+    ? wikiArticleBlocks.find(function(b) { return b && b.type === 'paragraph'; })
+    : null;
+  if (firstPara) {
+    firstPara.html = html;
+  } else if (Array.isArray(wikiArticleBlocks)) {
+    wikiArticleBlocks.unshift({
+      id: createWikiBlockId(),
+      type: 'paragraph',
+      html: html
+    });
+  }
+  renderWikiBlockEditors();
+  updateWikiPreview();
+
+  updatePreview();
+  saveDraft();
+  showToast('已导入选中文字 ✓');
+}
+
 window.addEventListener('message', function(e) {
   if (!e.data) return;
 
@@ -38048,130 +38377,57 @@ window.addEventListener('message', function(e) {
       __MEM_STORE__[REGEX_PRESET_KEY] = store[REGEX_PRESET_KEY];
       try { localStorage.setItem(REGEX_PRESET_KEY, store[REGEX_PRESET_KEY]); } catch(err) {}
     }
-
-if (store[FAVORITE_STORE_KEY]) {
+    if (store[FAVORITE_STORE_KEY]) {
       __MEM_STORE__[FAVORITE_STORE_KEY] = store[FAVORITE_STORE_KEY];
       try { localStorage.setItem(FAVORITE_STORE_KEY, store[FAVORITE_STORE_KEY]); } catch(err) {}
     }
 
     __BRIDGE_READY__ = true;
 
-    var d = loadStore();
-    document.body.classList.toggle('dark', !!d.darkMode);
-    $('editDarkMode').checked = !!d.darkMode;
-    editTranslateDarkMode.checked = !!d.darkMode;
+    try {
+      var d = loadStore();
+      document.body.classList.toggle('dark', !!d.darkMode);
+      $('editDarkMode').checked = !!d.darkMode;
+      editTranslateDarkMode.checked = !!d.darkMode;
 
-    populateCharSelect();
-    populateWikiEntrySelect(d.lastWikiEntryId);
-    renderRegexPresetSelect('__new__');
-    refreshFavoriteSelect();
+      populateCharSelect();
+      populateWikiEntrySelect(d.lastWikiEntryId);
+      renderRegexPresetSelect('__new__');
 
-    loadDraft();
-    if (d.lastCharId && getChars().some(function(c){ return c.id === d.lastCharId; })) {
-      charSelect.value = d.lastCharId;
-      loadChar(d.lastCharId);
+      loadDraft();
+      if (d.lastCharId && getChars().some(function(c){ return c.id === d.lastCharId; })) {
+        charSelect.value = d.lastCharId;
+        loadChar(d.lastCharId);
+      }
+
+      initializeSeparateBodyDrafts();
+      restoreSeparateBodyDraft(editorType);
+      setEditorType(editorType);
+      refreshTweetImageEditor();
+      updateAvatarThumb();
+      renderAllCommentEditors();
+      renderTweetComments();
+      updateWikiCoverThumb();
+      updateWikiRevisionInputState();
+      renderWikiSourceEditors();
+      renderWikiBlockEditors();
+      updateKindlePreview();
+      updateWikiPreview();
+      updateWereadPreview();
+      updateDoubanPreview();
+      updateActionsImage();
+      updatePreview();
+      refreshFavoriteSelect();
+    } catch (initErr) {
+      console.warn('恢复存档异常：', initErr);
     }
-
-    initializeSeparateBodyDrafts();
-    restoreSeparateBodyDraft(editorType);
-    setEditorType(editorType);
-    refreshTweetImageEditor();
-    updateAvatarThumb();
-    renderAllCommentEditors();
-    renderTweetComments();
-    updateWikiCoverThumb();
-    updateWikiRevisionInputState();
-    renderWikiSourceEditors();
-    renderWikiBlockEditors();
-    updateKindlePreview();
-    updateWikiPreview();
-    updateWereadPreview();
-    updateDoubanPreview();
-    updateActionsImage();
-    updatePreview();
   }
 
-  var text = String(e.data.text || '').trim();
-  if (
-    (e.data.type === 'RABBIT_BEAUTIFY_TEXT' || e.data.type === 'RABBIT_STORAGE_INIT') &&
-    text
-  ) {
-    var html = text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/\n/g, '<br>');
-
-    /* 1. 写入推文与备忘录共用编辑器，并同步更新两边的独立草稿槽 */
-    richEditor.innerHTML = html;
-    checkEditorEmpty();
-    if (!separateBodyDrafts || typeof separateBodyDrafts !== 'object') {
-      separateBodyDrafts = { tweet: null, notes: null };
-    }
-    var baseBodyDraft = captureSharedBodyDraft();
-    separateBodyDrafts.tweet = Object.assign({}, separateBodyDrafts.tweet || baseBodyDraft, { body: html });
-    separateBodyDrafts.notes = Object.assign({}, separateBodyDrafts.notes || baseBodyDraft, { body: html });
-    separateBodyDraftsReady = true;
-
-    /* 2. 写入苹果翻译原文 */
-    if (editTranslateSourceText) {
-      editTranslateSourceText.value = text;
-    }
-
-    /* 3. 写入 Kindle 正文 */
-    if (editKindleBody) {
-      editKindleBody.innerHTML = '';
-      text.split(/\n+/).forEach(function(line) {
-        if (!line.trim()) return;
-        var div = document.createElement('div');
-        div.textContent = line.trim();
-        editKindleBody.appendChild(div);
-      });
-      normalizeKindleEditorBlocks();
-      updateKindlePreview();
-    }
-
-    /* 4. 写入豆瓣书评/影评正文 */
-    if (doubanData) {
-      if (doubanData.book) doubanData.book.body = text;
-      if (doubanData.movie) doubanData.movie.body = text;
-      if (doubanControls && doubanControls.body) doubanControls.body.value = text;
-      updateDoubanPreview();
-    }
-
-    /* 5. 写入微信读书第一条书评 */
-    if (wereadData) {
-      if (!Array.isArray(wereadData.reviews) || !wereadData.reviews.length) {
-        wereadData.reviews = [createWereadReview()];
-      }
-      wereadData.reviews[0].body = text;
-      renderWereadReviewEditors();
-      updateWereadPreview();
-    }
-
-    /* 6. 写入维基百科第一段普通正文 */
-    var firstPara = Array.isArray(wikiArticleBlocks)
-      ? wikiArticleBlocks.find(function(b) { return b && b.type === 'paragraph'; })
-      : null;
-    if (firstPara) {
-      firstPara.html = html;
-    } else if (Array.isArray(wikiArticleBlocks)) {
-      wikiArticleBlocks.unshift({
-        id: createWikiBlockId(),
-        type: 'paragraph',
-        html: html
-      });
-    }
-    renderWikiBlockEditors();
-    updateWikiPreview();
-
-    updatePreview();
-    saveDraft();
-    showToast('已导入选中文字 ✓');
+  if (e.data.type === 'RABBIT_BEAUTIFY_TEXT' || e.data.type === 'RABBIT_STORAGE_INIT') {
+    importSelectedTextToAllEditors(e.data.text);
   }
 });
 
-/* 同时向 parent 和 top 发送就绪信号，防止中间层拦截 */
 try {
   var readyMsg = { type: 'RABBIT_STORAGE_READY' };
   if (window.parent && window.parent !== window) {
