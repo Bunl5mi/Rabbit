@@ -22312,27 +22312,6 @@ tweetCropModal.addEventListener(
   }
 );
 
-/* ==================== 头像上传 ==================== */
-function compressImage(file,maxSize,cb){
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var img=new Image();
-    img.onload=function(){
-      var c=document.createElement('canvas');
-      var w=img.width,h=img.height;
-      if(w>maxSize||h>maxSize){
-        if(w>h){h=Math.round(h*maxSize/w);w=maxSize}
-        else{w=Math.round(w*maxSize/h);h=maxSize}
-      }
-      c.width=w;c.height=h;
-      c.getContext('2d').drawImage(img,0,0,w,h);
-      cb(c.toDataURL('image/jpeg',0.85));
-    };
-    img.src=e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
 editAvatarFile.addEventListener('change',function(){
   var file=this.files[0];
   if(!file) return;
@@ -27135,6 +27114,7 @@ if(!saveStore(d)){
   populateCharSelect();charSelect.value=id;
   saveDraft();
   showToast('角色已保存 ✓');
+});
 
 $('btnDelChar').addEventListener('click',function(){
   if(charSelect.value==='__new__'){showToast('请先选择一个角色');return}
@@ -38316,6 +38296,103 @@ setTimeout(async function(){
     setFavoriteBusy(false);
   }
 },0);
+
+/* ==================== 图片预缓存 ==================== */
+var imgCache={};
+
+function collectUrls(){
+  var urls=[
+    KINDLE_WARM_PAPER_TEXTURE,
+    KINDLE_GRAY_PAPER_TEXTURE,
+    TRANSLATE_LIGHT_ICON,
+    TRANSLATE_DARK_ICON,
+    TRANSLATE_NATIVE_LIGHT_ICON,
+    TRANSLATE_NATIVE_DARK_ICON,
+    WIKI_TOP_IMAGES.zh,
+    WIKI_TOP_IMAGES.en
+  ];
+
+  document.querySelectorAll(
+    '#tweetPage img, ' +
+    '#notesPage img, ' +
+    '#wikiPreviewPage img, ' +
+    '#translatePreviewPage img, ' +
+    '#kindlePreviewPage img, ' +
+    '#wereadPreviewPage img, ' +
+    '#doubanPage img'
+  ).forEach(function(img){
+    ['src','data-light-src','data-dark-src'].forEach(function(attr){
+      var u=img.getAttribute(attr);
+      if(
+        u &&
+        u!=='about:blank' &&
+        !u.startsWith('data:') &&
+        !u.startsWith('blob:') &&
+        urls.indexOf(u)<0
+      ){
+        urls.push(u);
+      }
+    });
+  });
+
+  return urls;
+}
+
+function cacheImg(url,pi,cb){
+  if(!url) return cb(false);
+  if(imgCache[url]) return cb(true);
+  if(pi>=4) return cb(false);
+  var proxied;
+  if(pi===0) proxied=url;
+  else if(pi===1) proxied='https://wsrv.nl/?url='+encodeURIComponent(url);
+  else if(pi===2) proxied='https://corsproxy.io/?'+encodeURIComponent(url);
+  else proxied='https://api.allorigins.win/raw?url='+encodeURIComponent(url);
+  var img=new Image();
+  img.crossOrigin='anonymous';
+  img.onload=function(){
+    try{
+      var c=document.createElement('canvas');
+      c.width=img.naturalWidth;c.height=img.naturalHeight;
+      c.getContext('2d').drawImage(img,0,0);
+      imgCache[url]=c.toDataURL('image/png');
+      cb(true);
+    }catch(e){cacheImg(url,pi+1,cb)}
+  };
+  img.onerror=function(){cacheImg(url,pi+1,cb)};
+  img.src=proxied;
+}
+
+function startCaching(){
+  collectUrls().forEach(function(url){cacheImg(url,0,function(){})});
+}
+
+function ensureAllCached(cb){
+  var urls=collectUrls();
+  var pending=urls.filter(function(u){return u && !imgCache[u]});
+  if(pending.length===0) return cb();
+  var done=false,left=pending.length;
+  function finish(){if(done)return;done=true;cb()}
+  pending.forEach(function(url){
+    cacheImg(url,0,function(){left--;if(left<=0)finish()});
+  });
+  setTimeout(finish,8000);
+}
+
+function swapToCache(targetPage){
+  var arr=[];
+  var root=targetPage||getActivePage();
+  root.querySelectorAll('img').forEach(function(img){
+    var src=img.getAttribute('src');
+    if(src && imgCache[src]){
+      arr.push({el:img,orig:src});
+      img.src=imgCache[src];
+    }
+  });
+  return arr;
+}
+function swapBack(arr){arr.forEach(function(o){o.el.src=o.orig})}
+
+
 
 
 /* ==================== 初始化 ==================== */
