@@ -37572,17 +37572,49 @@ var favoriteTweetKeys=[
   'commentItems'
 ];
 
+
+
+
+function loadFallbackFavorites(){
+  try{
+    var raw=__getItem__(FAVORITE_STORE_KEY);
+    var arr=raw?JSON.parse(raw):[];
+    return Array.isArray(arr)?arr:[];
+  }catch(e){return [];}
+}
+
+function saveFallbackFavorites(arr){
+  try{
+    __setItem__(FAVORITE_STORE_KEY,JSON.stringify(arr));
+    return true;
+  }catch(e){return false;}
+}
+
 function openFavoriteDatabase(){
+  if(window.parent!==window || typeof indexedDB==='undefined'){
+    return Promise.resolve(null);
+  }
   if(favoriteDatabasePromise){
     return favoriteDatabasePromise;
   }
 
   favoriteDatabasePromise=new Promise(
     function(resolve,reject){
-      var request=indexedDB.open(
-        'beautyEditorFavoriteDatabase',
-        1
-      );
+      var timer=setTimeout(function(){
+        resolve(null);
+      },1200);
+
+      var request;
+      try{
+        request=indexedDB.open(
+          'beautyEditorFavoriteDatabase',
+          1
+        );
+      }catch(err){
+        clearTimeout(timer);
+        resolve(null);
+        return;
+      }
 
       request.onupgradeneeded=function(){
         var database=request.result;
@@ -37606,6 +37638,7 @@ function openFavoriteDatabase(){
       };
 
       request.onsuccess=function(){
+        clearTimeout(timer);
         var database=request.result;
 
         database.onversionchange=function(){
@@ -37617,23 +37650,28 @@ function openFavoriteDatabase(){
       };
 
       request.onerror=function(){
-        reject(request.error);
+        clearTimeout(timer);
+        resolve(null);
       };
 
       request.onblocked=function(){
-        showToast('请关闭其他打开本网页的标签页后重试');
+        clearTimeout(timer);
+        resolve(null);
       };
     }
-  ).catch(function(error){
+  ).catch(function(){
     favoriteDatabasePromise=null;
-    throw error;
+    return null;
   });
 
   return favoriteDatabasePromise;
 }
 
-async function runFavoriteRequest(mode,operation){
+async function runFavoriteRequest(mode,operation,fallbackFn){
   var database=await openFavoriteDatabase();
+  if(!database){
+    return fallbackFn();
+  }
 
   return new Promise(function(resolve,reject){
     var transaction=database.transaction(
@@ -37668,6 +37706,11 @@ function readFavoritesByType(type){
     'readonly',
     function(store){
       return store.index('type').getAll(type);
+    },
+    function(){
+      return loadFallbackFavorites().filter(function(item){
+        return item && item.type===type;
+      });
     }
   );
 }
@@ -37677,6 +37720,11 @@ function readFavorite(id){
     'readonly',
     function(store){
       return store.get(id);
+    },
+    function(){
+      return loadFallbackFavorites().find(function(item){
+        return item && item.id===id;
+      }) || null;
     }
   );
 }
@@ -37686,6 +37734,13 @@ function writeFavorite(entry){
     'readwrite',
     function(store){
       return store.put(entry);
+    },
+    function(){
+      var list=loadFallbackFavorites();
+      var idx=list.findIndex(function(item){return item && item.id===entry.id;});
+      if(idx>=0)list[idx]=entry;else list.push(entry);
+      saveFallbackFavorites(list);
+      return entry.id;
     }
   );
 }
@@ -37695,607 +37750,18 @@ function deleteFavorite(id){
     'readwrite',
     function(store){
       return store.delete(id);
-    }
-  );
-}
-
-function showFavoriteError(error){
-  console.warn('收藏操作失败：',error);
-
-  if(
-    error &&
-    error.name==='QuotaExceededError'
-  ){
-    showToast('设备可用储存不足，收藏未保存');
-    return;
-  }
-
-  showToast('收藏操作失败，请检查浏览器是否允许网站储存');
-}
-
-function cloneFavoriteData(value){
-  return JSON.parse(JSON.stringify(value));
-}
-
-function isFavoriteField(key,type){
-  if(favoriteOutputKeys.indexOf(key)>=0){
-    return true;
-  }
-
-  if(type==='tweet'){
-    return favoriteTweetKeys.indexOf(key)>=0;
-  }
-
-  if(type==='notes'){
-    return key.indexOf('notes')===0;
-  }
-
-  if(type==='wiki'){
-    return (
-      key.indexOf('wiki')===0 ||
-      key==='fontFamily'
-    );
-  }
-
-  if(type==='translate'){
-    return (
-      key.indexOf('translate')===0 ||
-      key==='fontFamily'
-    );
-  }
-
-if(type==='kindle'){
-    return key.indexOf('kindle')===0;
-  }
-
-  if(type==='weread'){
-    return key==='wereadData';
-  }
-
-if(type==='douban'){
-    return key==='doubanData';
-  }
-
-  return false;
-}
-
-function collectFavoriteSnapshot(){
-  var draft=saveDraft(true);
-
-  if(!draft){
-    throw new Error('favorite-snapshot-unavailable');
-  }
-
-  var snapshot={
-    fields:{}
-  };
-
-  Object.keys(draft).forEach(function(key){
-    if(isFavoriteField(key,editorType)){
-      snapshot.fields[key]=cloneFavoriteData(
-        draft[key]
-      );
-    }
-  });
-
-  if(
-    editorType==='tweet' ||
-    editorType==='notes'
-  ){
-    snapshot.sharedBody=cloneFavoriteData(
-      captureSharedBodyDraft()
-    );
-  }
-
-  if(
-    editorType==='tweet' ||
-    editorType==='translate'
-  ){
-    snapshot.darkMode=
-      document.body.classList.contains('dark');
-  }
-
-  if(editorType==='tweet'){
-    snapshot.fields.timeSync=false;
-  }
-
-  if(editorType==='wiki'){
-    snapshot.fields.wikiRevisionSync=false;
-
-    snapshot.fields.wikiRevision=
-      editWikiRevisionSync.checked
-        ? formatWikiRevisionTime(new Date())
-        : editWikiRevision.value;
-  }
-
-  if(
-    editorType==='kindle' &&
-    editKindleHeaderMode.value==='time'
-  ){
-    snapshot.fields.kindleHeaderMode='custom';
-
-    snapshot.fields.kindleHeaderText=
-      getKindleCurrentTime();
-  }
-
-  return snapshot;
-}
-
-async function migrateOldFavorites(){
-  var raw=localStorage.getItem(
-    FAVORITE_STORE_KEY
-  );
-
-  if(!raw){
-    return;
-  }
-
-  var entries=JSON.parse(raw);
-
-  if(
-    !Array.isArray(entries) ||
-    entries.some(function(entry){
-      return (
-        !entry ||
-        typeof entry.id!=='string' ||
-        !favoriteTypeNames[entry.type] ||
-        !entry.snapshot
-      );
-    })
-  ){
-    throw new Error('invalid-old-favorites');
-  }
-
-  var database=await openFavoriteDatabase();
-
-  await new Promise(function(resolve,reject){
-    var transaction=database.transaction(
-      'favorites',
-      'readwrite'
-    );
-
-    var store=transaction.objectStore(
-      'favorites'
-    );
-
-    entries.forEach(function(entry){
-      var request=store.get(entry.id);
-
-      request.onsuccess=function(){
-        if(!request.result){
-          store.put(entry);
-        }
-      };
-    });
-
-    transaction.oncomplete=resolve;
-
-    transaction.onabort=function(){
-      reject(
-        transaction.error ||
-        new Error('favorite-migration-aborted')
-      );
-    };
-
-    transaction.onerror=function(){};
-  });
-
-  if(
-    localStorage.getItem(
-      FAVORITE_STORE_KEY
-    )===raw
-  ){
-    localStorage.removeItem(
-      FAVORITE_STORE_KEY
-    );
-  }
-}
-
-async function renderFavoriteSelect(selectedId){
-  var version=++favoriteRenderVersion;
-  var type=editorType;
-
-  var wantedId=
-    typeof selectedId==='string'
-      ? selectedId
-      : favoriteSelectedIds[type] || '';
-
-  var entries=await readFavoritesByType(type);
-
-  if(
-    version!==favoriteRenderVersion ||
-    type!==editorType
-  ){
-    return;
-  }
-
-  entries.sort(function(first,second){
-    return (
-      (second.updatedAt || 0)-
-      (first.updatedAt || 0)
-    );
-  });
-
-  favoriteSelect.innerHTML='';
-
-  var placeholder=document.createElement('option');
-
-  placeholder.value='';
-  placeholder.textContent=
-    '选择已收藏的'+favoriteTypeNames[type];
-
-  favoriteSelect.appendChild(placeholder);
-
-  entries.forEach(function(entry){
-    var option=document.createElement('option');
-
-    option.value=entry.id;
-    option.textContent=entry.name;
-
-    favoriteSelect.appendChild(option);
-  });
-
-  favoriteSelect.value=wantedId;
-
-  if(favoriteSelect.selectedIndex<0){
-    favoriteSelect.value='';
-  }
-
-  favoriteSelectedIds[type]=favoriteSelect.value;
-
-  var selected=entries.find(function(entry){
-    return entry.id===favoriteSelect.value;
-  });
-
-  favoriteName.value=
-    selected ? selected.name : '';
-}
-
-function refreshFavoriteSelect(selectedId){
-  return renderFavoriteSelect(
-    selectedId
-  ).catch(showFavoriteError);
-}
-
-function setFavoriteBusy(busy){
-  favoriteBusy=busy;
-
-  [
-    'btnSaveFavorite',
-    'btnUpdateFavorite',
-    'btnLoadFavorite',
-    'btnDeleteFavorite',
-    'favoriteSelect',
-    'favoriteName'
-  ].forEach(function(id){
-    $(id).disabled=busy;
-  });
-
-  editorTypeTabs.forEach(function(tab){
-    tab.disabled=busy;
-  });
-}
-
-async function runFavoriteAction(action){
-  if(favoriteBusy){
-    return;
-  }
-
-  if(
-    regexReplacementActive ||
-    regexRestoreInProgress
-  ){
-    showToast('请先关闭替换预览');
-    return;
-  }
-
-  setFavoriteBusy(true);
-
-  try{
-    await action();
-  }catch(error){
-    showFavoriteError(error);
-  }finally{
-    setFavoriteBusy(false);
-  }
-}
-
-async function saveCurrentFavorite(updateExisting){
-  var name=favoriteName.value.trim();
-
-  if(!name){
-    showToast('请先填写收藏名称');
-    return;
-  }
-
-  var selectedId=favoriteSelect.value;
-  var existing=null;
-
-  if(updateExisting){
-    if(!selectedId){
-      showToast('请先选择要更新的收藏');
-      return;
-    }
-
-    existing=await readFavorite(selectedId);
-
-    if(
-      !existing ||
-      existing.type!==editorType
-    ){
-      showToast('没有找到这份收藏');
-      return;
-    }
-
-    if(
-      !confirm(
-        '用当前内容更新“'+
-        existing.name+
-        '”吗？'
-      )
-    ){
-      return;
-    }
-  }
-
-  var entry={
-    id:updateExisting
-      ? selectedId
-      : 'favorite_'+genId(),
-    type:editorType,
-    name:name,
-    snapshot:collectFavoriteSnapshot(),
-    updatedAt:Date.now()
-  };
-
-  await writeFavorite(entry);
-  await refreshFavoriteSelect(entry.id);
-
-  showToast(
-    updateExisting
-      ? '收藏已更新'
-      : '作品已加入收藏'
-  );
-}
-
-async function loadSelectedFavorite(){
-  var selectedId=favoriteSelect.value;
-
-  if(!selectedId){
-    showToast('请先选择一份收藏');
-    return;
-  }
-
-  var entry=await readFavorite(selectedId);
-
-  if(
-    !entry ||
-    entry.type!==editorType ||
-    !entry.snapshot
-  ){
-    showToast('没有找到这份收藏');
-    return;
-  }
-
-  if(
-    !confirm(
-      '载入“'+entry.name+'”吗？\n\n'+
-      '当前分类的内容和输出设置会被替换。'+
-      '想保留当前作品，请先取消并另存收藏。'
-    )
-  ){
-    return;
-  }
-
-  var currentDraft=saveDraft(true);
-
-  if(!currentDraft){
-    throw new Error('current-draft-unavailable');
-  }
-
-  var merged=cloneFavoriteData(currentDraft);
-  var snapshot=entry.snapshot;
-
-  Object.keys(
-    snapshot.fields || {}
-  ).forEach(function(key){
-    if(isFavoriteField(key,entry.type)){
-      merged[key]=cloneFavoriteData(
-        snapshot.fields[key]
-      );
-    }
-  });
-
-  if(
-    (
-      entry.type==='tweet' ||
-      entry.type==='notes'
-    ) &&
-    snapshot.sharedBody
-  ){
-    merged.separateBodyDrafts=
-      merged.separateBodyDrafts || {};
-
-    merged.separateBodyDrafts[entry.type]=
-      cloneFavoriteData(snapshot.sharedBody);
-
-    Object.keys(snapshot.sharedBody).forEach(
-      function(key){
-        merged[key]=cloneFavoriteData(
-          snapshot.sharedBody[key]
-        );
-      }
-    );
-  }
-
-  var darkMode=
-    document.body.classList.contains('dark');
-
-  if(
-    typeof snapshot.darkMode==='boolean'
-  ){
-    darkMode=snapshot.darkMode;
-  }
-
-  merged.translateDarkMode=darkMode;
-  merged.editorType=entry.type;
-
-  clearTimeout(draftTimer);
-  draftTimer=null;
-  stopSync();
-
-  var oldUndoRestoring=kindleUndoRestoring;
-
-  kindleUndoRestoring=true;
-  separateBodyDraftsReady=false;
-
-  try{
-    loadDraft({
-      draft:merged,
-      darkMode:darkMode
-    });
-
-    initializeSeparateBodyDrafts(merged);
-    restoreSeparateBodyDraft(entry.type);
-
-    setEditorType(entry.type);
-
-    updateAvatarThumb();
-    refreshTweetImageEditor();
-    renderAllCommentEditors();
-
-    updateWikiCoverThumb();
-    renderWikiSourceEditors();
-    renderWikiBlockEditors();
-
-    updateActionsImage();
-
-    if(editTimeSync.checked){
-      startSync();
-    }
-
-    updatePreview();
-  }finally{
-    kindleUndoRestoring=oldUndoRestoring;
-  }
-
-  if(entry.type==='kindle'){
-    kindleUndoHistory=[];
-    kindleUndoCurrent=getKindleUndoSnapshot();
-    kindleUndoLastTypingTime=0;
-    savedKindleRange=null;
-    savedKindleBlock=null;
-
-    syncKindleUndoButton();
-  }
-
-  await refreshFavoriteSelect(entry.id);
-
-  autoSaveDraft();
-  showToast('收藏已载入，可以预览或继续修改');
-}
-
-async function deleteSelectedFavorite(){
-  var selectedId=favoriteSelect.value;
-
-  if(!selectedId){
-    showToast('请先选择要删除的收藏');
-    return;
-  }
-
-  var entry=await readFavorite(selectedId);
-
-  if(
-    !entry ||
-    entry.type!==editorType
-  ){
-    showToast('没有找到这份收藏');
-    return;
-  }
-
-  if(
-    !confirm(
-      '确定删除收藏“'+entry.name+'”吗？\n\n'+
-      '当前编辑内容会保留。'
-    )
-  ){
-    return;
-  }
-
-  await deleteFavorite(entry.id);
-  await refreshFavoriteSelect('');
-
-  showToast('收藏已删除');
-}
-
-favoriteSelect.addEventListener(
-  'change',
-  function(){
-    refreshFavoriteSelect(this.value);
-  }
-);
-
-$('btnSaveFavorite').addEventListener(
-  'click',
-  function(){
-    runFavoriteAction(function(){
-      return saveCurrentFavorite(false);
-    });
-  }
-);
-
-$('btnUpdateFavorite').addEventListener(
-  'click',
-  function(){
-    runFavoriteAction(function(){
-      return saveCurrentFavorite(true);
-    });
-  }
-);
-
-$('btnLoadFavorite').addEventListener(
-  'click',
-  function(){
-    runFavoriteAction(loadSelectedFavorite);
-  }
-);
-
-$('btnDeleteFavorite').addEventListener(
-  'click',
-  function(){
-    runFavoriteAction(deleteSelectedFavorite);
-  }
-);
-
-editorTypeTabs.forEach(function(tab){
-  tab.addEventListener(
-    'click',
+    },
     function(){
-      refreshFavoriteSelect();
+      var list=loadFallbackFavorites().filter(function(item){
+        return item && item.id!==id;
+      });
+      saveFallbackFavorites(list);
     }
   );
-});
+}
 
-setFavoriteBusy(true);
 
-setTimeout(async function(){
-  try{
-    await openFavoriteDatabase();
 
-    try{
-      await migrateOldFavorites();
-    }catch(error){
-      console.warn('旧收藏迁移失败：',error);
-      showToast('旧收藏暂未迁移，原数据已保留');
-    }
-
-    await refreshFavoriteSelect();
-  }catch(error){
-    showFavoriteError(error);
-  }finally{
-    setFavoriteBusy(false);
-  }
-},0);
 
 /* ==================== 图片预缓存 ==================== */
 var imgCache={};
@@ -38582,6 +38048,11 @@ window.addEventListener('message', function(e) {
       try { localStorage.setItem(REGEX_PRESET_KEY, store[REGEX_PRESET_KEY]); } catch(err) {}
     }
 
+if (store[FAVORITE_STORE_KEY]) {
+      __MEM_STORE__[FAVORITE_STORE_KEY] = store[FAVORITE_STORE_KEY];
+      try { localStorage.setItem(FAVORITE_STORE_KEY, store[FAVORITE_STORE_KEY]); } catch(err) {}
+    }
+
     __BRIDGE_READY__ = true;
 
     var d = loadStore();
@@ -38592,6 +38063,7 @@ window.addEventListener('message', function(e) {
     populateCharSelect();
     populateWikiEntrySelect(d.lastWikiEntryId);
     renderRegexPresetSelect('__new__');
+    refreshFavoriteSelect();
 
     loadDraft();
     if (d.lastCharId && getChars().some(function(c){ return c.id === d.lastCharId; })) {
