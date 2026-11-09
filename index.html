@@ -8,40 +8,46 @@
 <link
   rel="stylesheet"
   href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700&display=swap"
+  crossorigin="anonymous"
 >
-<link rel="stylesheet" href="https://fontsapi.zeoseven.com/136/hans-medium/result.css">
-<link rel="stylesheet" href="https://fontsapi.zeoseven.com/144/main/result.css">
+<link rel="stylesheet" href="https://fontsapi.zeoseven.com/136/hans-medium/result.css" crossorigin="anonymous">
+<link rel="stylesheet" href="https://fontsapi.zeoseven.com/144/main/result.css" crossorigin="anonymous">
 
-<link rel="stylesheet" href="https://fontsapi.zeoseven.com/256/main/result.css">
+<link rel="stylesheet" href="https://fontsapi.zeoseven.com/256/main/result.css" crossorigin="anonymous">
 
 <!-- 维基头图裁剪工具 -->
 <link
   rel="stylesheet"
   href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css"
+  crossorigin="anonymous"
 >
 
 <!-- 文渊黑体 -->
 <link
   rel="stylesheet"
   href="https://fontsapi.zeoseven.com/13/main/result.css"
+  crossorigin="anonymous"
 >
 
 <!-- 圆构黑体 -->
 <link
   rel="stylesheet"
   href="https://fontsapi.zeoseven.com/979/main/result.css"
+  crossorigin="anonymous"
 >
 
 <!-- 有爱新黑 -->
 <link
   rel="stylesheet"
   href="https://fontsapi.zeoseven.com/388/bold/result.css"
+  crossorigin="anonymous"
 />
 
 <!-- 屏显臻宋 -->
 <link
   rel="stylesheet"
   href="https://fontsapi.zeoseven.com/79/main/result.css"
+  crossorigin="anonymous"
 >
 
 <!-- Kindle 正文字体 -->
@@ -49,11 +55,13 @@
 <link
   rel="stylesheet"
   href="https://fontsapi.zeoseven.com/2/main/result.css"
+  crossorigin="anonymous"
 >
 
 <link
   rel="stylesheet"
   href="https://fontsapi.zeoseven.com/285/main/result.css"
+  crossorigin="anonymous"
 />
 
 <!-- 预加载方正新书宋 -->
@@ -523,7 +531,7 @@ body.preview-mode .preview-actions.fade-out{opacity:0;pointer-events:none}
 .tweet-header{position:relative;z-index:2;display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .tweet-avatar{
   position:relative;z-index:2;width:45px;height:45px;flex-shrink:0;
-  overflow:hidden;border-radius:50%;background:#e5e5ea;
+  overflow:hidden;border-radius:50%;background:transparent;
 }
 .tweet-avatar img{width:100%;height:100%;display:block;object-fit:cover;pointer-events:none}
 .tweet-user-info{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}
@@ -13952,11 +13960,32 @@ data-base-size="23"
 <div class="preview-actions" id="previewActions">
   <button
     type="button"
+    class="preview-action-btn btn-save"
+    id="btnSaveImage"
+  >
+    保存图片
+  </button>
+
+  <button
+    type="button"
     class="preview-action-btn"
     id="btnBackEdit"
   >
     ← 返回编辑
   </button>
+</div>
+
+<!-- 保存图片弹窗 -->
+<div class="save-modal" id="saveModal" aria-hidden="true">
+  <div class="save-modal-overlay" id="saveModalOverlay"></div>
+  <div class="save-modal-body">
+    <div class="save-modal-hint">📱 手机请长按下方图片保存到相册，或点击下载</div>
+    <img class="save-modal-img" id="saveModalImg" src="" alt="生成的长图">
+    <div class="save-modal-btns">
+      <button type="button" class="save-modal-btn save-modal-btn-download" id="btnDownloadImg">下载图片</button>
+      <button type="button" class="save-modal-btn save-modal-btn-close" id="btnCloseSaveModal">关闭</button>
+    </div>
+  </div>
 </div>
 
 <!-- 维基头图裁剪弹窗 -->
@@ -14177,18 +14206,33 @@ data-base-size="23"
 
 
 <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/modern-screenshot@4.6.0/dist/index.js"></script>
 
 <script>
 (function(){
 
+var __MEM_STORE__ = {};
+var __BRIDGE_READY__ = (window.parent === window);
+function __getItem__(k) {
+  if (__MEM_STORE__[k] !== undefined) return __MEM_STORE__[k];
+  try { return localStorage.getItem(k); } catch(e) { return null; }
+}
+function __setItem__(k, v) {
+  __MEM_STORE__[k] = String(v);
+  try { localStorage.setItem(k, v); } catch(e) {}
+  if (!__BRIDGE_READY__) return;
+  var msg = { type: 'RABBIT_STORAGE_SAVE', key: k, value: String(v) };
+  try {
+    if (window.parent && window.parent !== window) window.parent.postMessage(msg, '*');
+  } catch(e) {}
+}
 
 var STORE_KEY='beautyEditor';
-function loadStore(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{}}catch(e){return{}}}
+function loadStore(){try{return JSON.parse(__getItem__(STORE_KEY))||{}}catch(e){return{}}}
 function saveStore(d){
   try{
-    localStorage.setItem(STORE_KEY,JSON.stringify(d));
+    __setItem__(STORE_KEY,JSON.stringify(d));
     return true;
   }catch(error){
     console.warn('草稿保存失败：',error);
@@ -14200,6 +14244,7 @@ function saveStore(d){
     return false;
   }
 }
+
 function genId(){return 'c_'+Date.now()+'_'+Math.random().toString(36).substr(2,5)}
 
 var $=function(id){return document.getElementById(id)};
@@ -20679,7 +20724,7 @@ showToast('已恢复原文，修改后可重新开启');
 function loadRegexPresetData(){
   try{
     var data=JSON.parse(
-      localStorage.getItem(REGEX_PRESET_KEY)
+      __getItem__(REGEX_PRESET_KEY)
     );
 
     return Array.isArray(data)
@@ -20693,8 +20738,7 @@ function loadRegexPresetData(){
 /* 保存全部方案 */
 function saveRegexPresetData(presets){
   try{
-    localStorage.setItem(
-      REGEX_PRESET_KEY,
+    __setItem__(REGEX_PRESET_KEY,
       JSON.stringify(presets)
     );
 
@@ -21704,84 +21748,34 @@ function initRegexTool(){
   );
 }
 
-/* ==================== 图片预缓存 ==================== */
-var imgCache={};
-
-function collectUrls(){
-  var urls=[];
-
-document.querySelectorAll(
-  '#tweetPage img, ' +
-  '#notesPage img, ' +
-  '#wikiPreviewPage img, ' +
-  '#translatePreviewPage img, ' +
-  '#kindlePreviewPage img'
-).forEach(function(img){
-    ['src','data-light-src','data-dark-src'].forEach(function(attr){
-      var u=img.getAttribute(attr);
-
-      if(
-        u &&
-        u!=='about:blank' &&
-        !u.startsWith('data:') &&
-        !u.startsWith('blob:') &&
-        urls.indexOf(u)<0
-      ){
-        urls.push(u);
-      }
-    });
-  });
-
-  return urls;
-}
-
-function cacheImg(url,pi,cb){
-  if(imgCache[url]) return cb(true);
-  if(pi>=3) return cb(false);
-  var proxied;
-  if(pi===0) proxied='https://wsrv.nl/?url='+encodeURIComponent(url);
-  else if(pi===1) proxied='https://corsproxy.io/?'+encodeURIComponent(url);
-  else proxied='https://api.allorigins.win/raw?url='+encodeURIComponent(url);
-  var img=new Image();
-  img.crossOrigin='anonymous';
-  img.onload=function(){
-    try{
+/* ==================== 头像上传 ==================== */
+function compressImage(file,maxSize,cb){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
       var c=document.createElement('canvas');
-      c.width=img.naturalWidth;c.height=img.naturalHeight;
-      c.getContext('2d').drawImage(img,0,0);
-      imgCache[url]=c.toDataURL('image/png');
-      cb(true);
-    }catch(e){cacheImg(url,pi+1,cb)}
+      var w=img.width,h=img.height;
+      if(w>maxSize||h>maxSize){
+        if(w>h){h=Math.round(h*maxSize/w);w=maxSize}
+        else{w=Math.round(w*maxSize/h);h=maxSize}
+      }
+      c.width=w;c.height=h;
+      var ctx=c.getContext('2d');
+      ctx.clearRect(0,0,w,h);
+      ctx.drawImage(img,0,0,w,h);
+      var isTransparent=file.type==='image/png'||file.type==='image/webp';
+      if(isTransparent){
+        var webp=c.toDataURL('image/webp',0.82);
+        cb(webp.indexOf('data:image/webp')===0?webp:c.toDataURL('image/png'));
+      }else{
+        cb(c.toDataURL('image/jpeg',0.82));
+      }
+    };
+    img.src=e.target.result;
   };
-  img.onerror=function(){cacheImg(url,pi+1,cb)};
-  img.src=proxied;
+  reader.readAsDataURL(file);
 }
-
-function startCaching(){
-  collectUrls().forEach(function(url){cacheImg(url,0,function(){})});
-}
-
-function ensureAllCached(cb){
-  var urls=collectUrls();
-  var pending=urls.filter(function(u){return !imgCache[u]});
-  if(pending.length===0) return cb();
-  var done=false,left=pending.length;
-  function finish(){if(done)return;done=true;cb()}
-  pending.forEach(function(url){
-    cacheImg(url,0,function(){left--;if(left<=0)finish()});
-  });
-  setTimeout(finish,10000);
-}
-
-function swapToCache(){
-  var arr=[];
-  tweetPage.querySelectorAll('img').forEach(function(img){
-    var src=img.src;
-    if(imgCache[src]){arr.push({el:img,orig:src});img.src=imgCache[src]}
-  });
-  return arr;
-}
-function swapBack(arr){arr.forEach(function(o){o.el.src=o.orig})}
 
 /* ==================== 仿 X 图片裁剪 ==================== */
 
@@ -27139,8 +27133,8 @@ if(!saveStore(d)){
   return;
 }
   populateCharSelect();charSelect.value=id;
+  saveDraft();
   showToast('角色已保存 ✓');
-});
 
 $('btnDelChar').addEventListener('click',function(){
   if(charSelect.value==='__new__'){showToast('请先选择一个角色');return}
@@ -38381,6 +38375,223 @@ init();
 kindleUndoCurrent=getKindleUndoSnapshot();
 kindleUndoReady=true;
 syncKindleUndoButton();
+
+/* ==================== 一键生成高清截图 ==================== */
+var btnSaveImage = $('btnSaveImage');
+var saveModal = $('saveModal');
+var saveModalImg = $('saveModalImg');
+var saveModalOverlay = $('saveModalOverlay');
+var btnDownloadImg = $('btnDownloadImg');
+var btnCloseSaveModal = $('btnCloseSaveModal');
+var isGeneratingShot = false;
+
+function closeSaveModal() {
+  saveModal.classList.remove('show');
+  saveModal.setAttribute('aria-hidden', 'true');
+}
+
+saveModalOverlay.addEventListener('click', closeSaveModal);
+btnCloseSaveModal.addEventListener('click', closeSaveModal);
+
+btnDownloadImg.addEventListener('click', function() {
+  if (!saveModalImg.src) return;
+  var a = document.createElement('a');
+  a.href = saveModalImg.src;
+  a.download = 'rabbit_' + editorType + '_' + Date.now() + '.png';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  showToast('已开始下载 ✓');
+});
+
+btnSaveImage.addEventListener('click', function(event) {
+  event.stopPropagation();
+  if (isGeneratingShot) return;
+
+  if (typeof modernScreenshot === 'undefined' || !modernScreenshot.domToPng) {
+    showToast('截图组件加载中，请稍后再试');
+    return;
+  }
+
+  isGeneratingShot = true;
+  clearTimeout(fadeTimer);
+  showToast('正在生成高清图片，请稍候…');
+
+  var activePage = getActivePage();
+  var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+
+  fontsReady.catch(function(){}).then(function() {
+    ensureAllCached(function() {
+      var swapped = swapToCache(activePage);
+
+      var prevTransform = activePage.style.transform;
+      var prevLeft = activePage.style.left;
+      var prevTop = activePage.style.top;
+      var targetWidth = BASE_WIDTH;
+      var targetHeight = getPageHeight();
+
+      activePage.style.transform = 'scale(1)';
+      activePage.style.left = '0px';
+      activePage.style.top = '0px';
+      activePage.style.width = targetWidth + 'px';
+      activePage.style.height = targetHeight + 'px';
+
+      if (editorType === 'tweet') applyTweetMediaSquircles();
+      if (editorType === 'translate') refreshTranslateAppearance();
+      if (editorType === 'kindle') refreshAllKindleHighlightShapes();
+      if (editorType === 'weread') refreshWereadAppearance();
+      if (editorType === 'douban') refreshDoubanAppearance();
+
+      requestAnimationFrame(function() {
+        setTimeout(function() {
+          modernScreenshot.domToPng(activePage, {
+            width: targetWidth,
+            height: targetHeight,
+            scale: 2,
+            style: {
+              transform: 'none',
+              left: '0px',
+              top: '0px',
+              margin: '0px'
+            },
+            fetch: {
+              requestInit: { mode: 'cors' },
+              bypassingCache: false
+            }
+          }).then(function(dataUrl) {
+            activePage.style.transform = prevTransform;
+            activePage.style.left = prevLeft;
+            activePage.style.top = prevTop;
+            swapBack(swapped);
+            applyScale();
+            isGeneratingShot = false;
+
+            saveModalImg.src = dataUrl;
+            saveModal.classList.add('show');
+            saveModal.setAttribute('aria-hidden', 'false');
+            showToast('生成成功！长按图片即可保存 ✓');
+            showPreviewBtns();
+          }).catch(function(err) {
+            console.error('截图失败：', err);
+            activePage.style.transform = prevTransform;
+            activePage.style.left = prevLeft;
+            activePage.style.top = prevTop;
+            swapBack(swapped);
+            applyScale();
+            isGeneratingShot = false;
+            showToast('生成失败，请重试');
+            showPreviewBtns();
+          });
+        }, 120);
+      });
+    });
+  });
+});
+
+/* ==================== 接收来自酒馆的存档与选中文字 ==================== */
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+
+  if (e.data.type === 'RABBIT_STORAGE_INIT') {
+    clearTimeout(draftTimer);
+    var store = e.data.store || {};
+
+    if (store[STORE_KEY]) {
+      __MEM_STORE__[STORE_KEY] = store[STORE_KEY];
+      try { localStorage.setItem(STORE_KEY, store[STORE_KEY]); } catch(err) {}
+    }
+    if (store[REGEX_PRESET_KEY]) {
+      __MEM_STORE__[REGEX_PRESET_KEY] = store[REGEX_PRESET_KEY];
+      try { localStorage.setItem(REGEX_PRESET_KEY, store[REGEX_PRESET_KEY]); } catch(err) {}
+    }
+
+    __BRIDGE_READY__ = true;
+
+    var d = loadStore();
+    document.body.classList.toggle('dark', !!d.darkMode);
+    $('editDarkMode').checked = !!d.darkMode;
+    editTranslateDarkMode.checked = !!d.darkMode;
+
+    populateCharSelect();
+    populateWikiEntrySelect(d.lastWikiEntryId);
+    renderRegexPresetSelect('__new__');
+
+    loadDraft();
+    if (d.lastCharId && getChars().some(function(c){ return c.id === d.lastCharId; })) {
+      charSelect.value = d.lastCharId;
+      loadChar(d.lastCharId);
+    }
+
+    initializeSeparateBodyDrafts();
+    restoreSeparateBodyDraft(editorType);
+    setEditorType(editorType);
+    refreshTweetImageEditor();
+    updateAvatarThumb();
+    renderAllCommentEditors();
+    renderTweetComments();
+    updateWikiCoverThumb();
+    updateWikiRevisionInputState();
+    renderWikiSourceEditors();
+    renderWikiBlockEditors();
+    updateKindlePreview();
+    updateWikiPreview();
+    updateWereadPreview();
+    updateDoubanPreview();
+    updateActionsImage();
+    updatePreview();
+  }
+
+  var text = String(e.data.text || '').trim();
+  if (
+    (e.data.type === 'RABBIT_BEAUTIFY_TEXT' || e.data.type === 'RABBIT_STORAGE_INIT') &&
+    text
+  ) {
+    var html = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>');
+
+    richEditor.innerHTML = html;
+    checkEditorEmpty();
+
+    if (editTranslateSourceText) {
+      editTranslateSourceText.value = text;
+    }
+
+    if (editKindleBody) {
+      editKindleBody.innerHTML = '';
+      text.split(/\n+/).forEach(function(line) {
+        if (!line.trim()) return;
+        var div = document.createElement('div');
+        div.textContent = line.trim();
+        editKindleBody.appendChild(div);
+      });
+      normalizeKindleEditorBlocks();
+    }
+
+    if (doubanData && getDoubanState()) {
+      getDoubanState().body = text;
+      if (doubanControls.body) doubanControls.body.value = text;
+    }
+
+    if (wereadData && Array.isArray(wereadData.reviews) && wereadData.reviews[0]) {
+      wereadData.reviews[0].body = text;
+      renderWereadReviewEditors();
+    }
+
+    rememberSeparateBodyDraft();
+    updatePreview();
+    saveDraft();
+    showToast('已导入选中文字 ✓');
+  }
+});
+
+try {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'RABBIT_STORAGE_READY' }, '*');
+  }
+} catch(e) {}
 
 })();
 </script>
