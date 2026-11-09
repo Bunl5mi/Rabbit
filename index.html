@@ -594,6 +594,12 @@ white-space:nowrap;
 body.dark .tweet-body span[style*="background-color"]{color:#1c1c1e}
 .tweet-body.indented{text-indent:2em}
 .tweet-body.indented div,.tweet-body.indented p{text-indent:2em}
+.rich-editor div + div, .rich-editor p + p,
+.tweet-body div + div, .tweet-body p + p,
+#notesPage .notes-original-body div + div, #notesPage .notes-original-body p + p,
+.wiki-paragraph-editor div + div, .wiki-preview-paragraph div + div {
+  margin-top: 0.55em;
+}
 
 .tweet-media {
   width: 100%;
@@ -10179,7 +10185,7 @@ body.preview-mode.auto-tweet.weread-editor-mode .weread-content {
 }
 
 .weread-review-body p + p {
-  margin-top: var(--weread-review-paragraph-gap, 0em);
+  margin-top: var(--weread-review-paragraph-gap, 0.4em);
 }
 
 .weread-review-actions {
@@ -15533,7 +15539,7 @@ addSelect(
 addSelect(
     '书评',
     '段落间距',
-    '0',
+    '0.4',
     {
       '0':'无额外间距',
       '0.4':'小 · 0.4em',
@@ -38288,11 +38294,19 @@ function importSelectedTextToAllEditors(rawText) {
   var text = String(rawText || '').trim();
   if (!text) return;
 
-  var html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>');
+  var lines = text.split(/\n+/).map(function(line) {
+    return line.trim();
+  }).filter(function(line) {
+    return line.length > 0;
+  });
+
+  var html = lines.map(function(line) {
+    var safe = line
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    return '<div>' + safe + '</div>';
+  }).join('');
 
   /* 1. 写入推文与备忘录编辑器，并同步两个独立草稿槽 */
   richEditor.innerHTML = html;
