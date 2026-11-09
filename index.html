@@ -594,13 +594,25 @@ white-space:nowrap;
 body.dark .tweet-body span[style*="background-color"]{color:#1c1c1e}
 .tweet-body.indented{text-indent:2em}
 .tweet-body.indented div,.tweet-body.indented p{text-indent:2em}
-.rich-editor > div + div, .rich-editor > p + p,
-#tweetPage .tweet-body > div + div, #tweetPage .tweet-body > p + p,
-#notesPage .notes-original-body > div + div, #notesPage .notes-original-body > p + p,
-.wiki-paragraph-editor > div + div, #wikiPreviewPage .wiki-preview-paragraph > div + div,
+.rich-editor > div + div, .rich-editor > p + p {
+  display: block;
+  margin-top: var(--shared-paragraph-gap, 0.55em) !important;
+}
+#tweetPage .tweet-body > div + div, #tweetPage .tweet-body > p + p {
+  display: block;
+  margin-top: var(--tweet-paragraph-gap, 0.55em) !important;
+}
+#notesPage .notes-original-body > div + div, #notesPage .notes-original-body > p + p {
+  display: block;
+  margin-top: var(--notes-paragraph-gap, 0.55em) !important;
+}
+.wiki-paragraph-editor > div + div, #wikiPreviewPage .wiki-preview-paragraph > div + div {
+  display: block;
+  margin-top: 0.55em !important;
+}
 #translatePreviewPage .translate-preview-text > div + div {
   display: block;
-  margin-top: 0.6em !important;
+  margin-top: var(--translate-paragraph-gap, 0.45em) !important;
 }
 
 .tweet-media {
@@ -10720,6 +10732,18 @@ body.dark .subscribe-label {
       step="0.05"
     >
   </div>
+
+  <div class="editor-row">
+    <label>段距</label>
+    <input
+      type="number"
+      id="editParagraphGap"
+      value="0.55"
+      min="0"
+      max="3"
+      step="0.05"
+    >
+  </div>
 </div>
 
 <div
@@ -11374,6 +11398,22 @@ body.dark .subscribe-label {
       id="editTranslateResultText"
       placeholder="输入翻译结果"
     ></textarea>
+  </div>
+
+  <!-- 段落间距 -->
+  <div class="translate-editor-field">
+    <label for="editTranslateParagraphGap">
+      段落间距（0 为无间距）
+    </label>
+
+    <input
+      type="number"
+      id="editTranslateParagraphGap"
+      value="0.45"
+      min="0"
+      max="3"
+      step="0.05"
+    >
   </div>
 </div>
 
@@ -17323,6 +17363,7 @@ function captureSharedBodyDraft(){
     fontFamily:editFontFamily.value,
     fontSize:editFontSize.value,
     lineHeight:editLineHeight.value,
+    paragraphGap:editParagraphGap ? editParagraphGap.value : '0.55',
     weightShift:editWeightShift.checked,
     customHighlightColor:customHighlightColor.value
   };
@@ -17369,6 +17410,7 @@ function restoreSeparateBodyDraft(type){
 
   editFontSize.value=draft.fontSize || '14';
   editLineHeight.value=draft.lineHeight || '1.55';
+  if(editParagraphGap) editParagraphGap.value=(draft.paragraphGap!==undefined ? draft.paragraphGap : '0.55');
   editWeightShift.checked=!!draft.weightShift;
 
   var color=normalizeHighlightHex(
@@ -20301,6 +20343,8 @@ var editAvatar=$('editAvatar'),editAvatarFile=$('editAvatarFile'),
     editTransLang=$('editTransLang'),editShowRate=$('editShowRate'),
     richEditor=$('richEditor'),editIndent=$('editIndent'),
     editFontSize=$('editFontSize'),editLineHeight=$('editLineHeight'),
+    editParagraphGap=$('editParagraphGap'),
+    editTranslateParagraphGap=$('editTranslateParagraphGap'),
     editWeightShift=$('editWeightShift'),
     overallWeightRow=$('overallWeightRow'),
     editReply=$('editReply'),editRetweet=$('editRetweet'),
@@ -35054,6 +35098,16 @@ previewVerified.style.display=
   var bodyHtml=richEditor.innerHTML;
   if(bodyHtml==='<br>'||bodyHtml==='<div><br></div>')bodyHtml='';
   renderTweetBody(bodyHtml);
+  var sharedGap=Math.max(0, Math.min(3, Number(editParagraphGap ? editParagraphGap.value : 0.55)));
+  if(!Number.isFinite(sharedGap)) sharedGap=0.55;
+  richEditor.style.setProperty('--shared-paragraph-gap', sharedGap+'em');
+  previewBody.style.setProperty('--tweet-paragraph-gap', sharedGap+'em');
+  previewNotesBody.style.setProperty('--notes-paragraph-gap', sharedGap+'em');
+
+  var transGap=Math.max(0, Math.min(3, Number(editTranslateParagraphGap ? editTranslateParagraphGap.value : 0.45)));
+  if(!Number.isFinite(transGap)) transGap=0.45;
+  if(translatePreviewPage) translatePreviewPage.style.setProperty('--translate-paragraph-gap', transGap+'em');
+
   previewBody.style.fontSize=editFontSize.value+'px';
   previewBody.style.lineHeight=editLineHeight.value;
   previewBody.classList.remove('indented');
